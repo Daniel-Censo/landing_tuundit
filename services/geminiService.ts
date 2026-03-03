@@ -232,21 +232,23 @@ const cleanJson = (text: any) => {
 /**
  * Helper to call Gemini with retry logic for transient errors (like 503).
  */
-const callGeminiWithRetry = async (fn: () => Promise<any>, maxRetries = 3): Promise<any> => {
+const callGeminiWithRetry = async (fn: () => Promise<any>, maxRetries = 5): Promise<any> => {
     let lastError: any;
     for (let i = 0; i < maxRetries; i++) {
         try {
             return await fn();
         } catch (err: any) {
             lastError = err;
+            const errStr = JSON.stringify(err);
             const isTransient = err.message?.includes("503") || 
                                err.message?.includes("high demand") || 
                                err.message?.includes("UNAVAILABLE") ||
-                               JSON.stringify(err).includes("503");
+                               errStr.includes("503") ||
+                               errStr.includes("UNAVAILABLE");
             
             if (isTransient && i < maxRetries - 1) {
-                const delay = Math.pow(2, i + 1) * 2000 + Math.random() * 1000; // Increased delay
-                console.warn(`Gemini API busy (503). Retrying in ${Math.round(delay)}ms... (Attempt ${i + 1}/${maxRetries})`);
+                const delay = Math.pow(2, i + 1) * 3000 + Math.random() * 1000; // Delay più lungo (6s, 12s, 24s...)
+                console.warn(`[Gemini] Server occupato (503). Attendo ${Math.round(delay)}ms e riprovo... (Tentativo ${i + 1}/${maxRetries})`);
                 await new Promise(resolve => setTimeout(resolve, delay));
                 continue;
             }
@@ -286,7 +288,7 @@ export const generateLandingPage = async (product: ProductDetails, reviewCount: 
     - Follow the GeneratedContent interface structure strictly.`;
 
     const response = await callGeminiWithRetry(() => ai.models.generateContent({
-        model: 'gemini-flash-latest',
+        model: 'gemini-1.5-flash',
         contents: prompt,
         config: {
             responseMimeType: "application/json",
@@ -515,7 +517,7 @@ export const generateReviews = async (product: ProductDetails, language: string,
 
         try {
             const response = await callGeminiWithRetry(() => ai.models.generateContent({
-                model: 'gemini-flash-latest',
+                model: 'gemini-1.5-flash',
                 contents: { parts: contentsParts },
                 config: {
                     responseMimeType: "application/json",
@@ -630,7 +632,7 @@ export const rewriteLandingPage = async (content: GeneratedContent, tone: PageTo
     const prompt = `Rewrite the following landing page content to have a ${tone} tone in Italiano: ${JSON.stringify(textFields)}`;
 
     const response = await callGeminiWithRetry(() => ai.models.generateContent({
-        model: 'gemini-flash-latest',
+        model: 'gemini-1.5-flash',
         contents: prompt,
         config: {
             responseMimeType: "application/json",
