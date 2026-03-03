@@ -181,12 +181,10 @@ const COMMON_UI_DEFAULTS: Partial<UiTranslation> = {
  * Fixed to strictly follow API key usage guidelines.
  * Always initializes GoogleGenAI with process.env.API_KEY.
  */
+import { CONFIG } from "../config";
+
 const getAIInstance = () => {
-    const apiKey = (
-        (import.meta as any).env?.VITE_API_KEY || 
-        (process as any).env?.VITE_API_KEY ||
-        ""
-    ).trim();
+    const apiKey = CONFIG.GEMINI_API_KEY.trim();
     
     if (apiKey && apiKey.length > 5) {
         const masked = `${apiKey.substring(0, 4)}...${apiKey.substring(apiKey.length - 4)}`;

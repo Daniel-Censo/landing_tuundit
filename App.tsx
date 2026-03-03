@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { CONFIG, checkConfig } from './config';
 import { supabase, isSupabaseConfigured, base64ToBlob, uploadImage, compressImage } from './services/supabaseClient';
 import { generateLandingPage, generateReviews, generateActionImages, translateLandingPage, rewriteLandingPage, getLanguageConfig, TIKTOK_SLIDER_HTML } from './services/geminiService';
 import LandingPage, { ThankYouPage } from './components/LandingPage';
@@ -433,6 +434,10 @@ const EditorSection: React.FC<{ title: string; num: string | number; icon: React
 };
 
 export const App: React.FC = () => {
+  useEffect(() => {
+    checkConfig();
+  }, []);
+
   // Stati principali
   const [isInitializing, setIsInitializing] = useState(true);
   const [view, setView] = useState<'home' | 'product_view' | 'thank_you_view' | 'admin' | 'preview'>('home');
@@ -1201,12 +1206,12 @@ export const App: React.FC = () => {
                                     <span className="text-xs font-bold text-slate-600">Gemini AI</span>
                                 </div>
                                 <div className="flex flex-col items-end gap-1">
-                                    <span className={`text-[10px] font-black px-2 py-1 rounded-full ${((import.meta as any).env?.VITE_API_KEY) ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                                        {((import.meta as any).env?.VITE_API_KEY) ? 'CONFIGURATO ✅' : 'MANCANTE ❌'}
+                                    <span className={`text-[10px] font-black px-2 py-1 rounded-full ${CONFIG.GEMINI_API_KEY ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                                        {CONFIG.GEMINI_API_KEY ? 'CONFIGURATO ✅' : 'MANCANTE ❌'}
                                     </span>
-                                    {((import.meta as any).env?.VITE_API_KEY) && (
+                                    {CONFIG.GEMINI_API_KEY && (
                                         <span className="text-[8px] font-mono text-slate-400">
-                                            {(import.meta as any).env.VITE_API_KEY.substring(0, 4)}...{(import.meta as any).env.VITE_API_KEY.substring((import.meta as any).env.VITE_API_KEY.length - 4)}
+                                            {CONFIG.GEMINI_API_KEY.substring(0, 4)}...{CONFIG.GEMINI_API_KEY.substring(CONFIG.GEMINI_API_KEY.length - 4)}
                                         </span>
                                     )}
                                 </div>
