@@ -186,14 +186,19 @@ import { CONFIG } from "../config";
 const getAIInstance = () => {
     const apiKey = CONFIG.GEMINI_API_KEY.trim();
     
-    if (apiKey && apiKey.length > 5) {
-        const masked = `${apiKey.substring(0, 4)}...${apiKey.substring(apiKey.length - 4)}`;
-        console.log(`[Gemini Debug] API Key caricata: ${masked}`);
-    }
+    const isValid = apiKey && 
+                    apiKey !== "undefined" && 
+                    apiKey !== "null" && 
+                    apiKey.length > 10;
 
-    if (!apiKey || apiKey === "undefined" || apiKey === "") {
-        throw new Error("Chiave API (VITE_API_KEY) mancante. Aggiungila su Vercel e fai il Redeploy.");
+    if (isValid) {
+        const masked = `${apiKey.substring(0, 4)}...${apiKey.substring(apiKey.length - 4)}`;
+        console.log(`[Gemini Debug] API Key caricata correttamente: ${masked}`);
+    } else {
+        console.error(`[Gemini Error] API Key non valida o mancante. Valore rilevato: "${apiKey}"`);
+        throw new Error("Chiave API (VITE_API_KEY) mancante o non valida. Aggiungila correttamente su Vercel e fai il Redeploy con 'Force Rebuild'.");
     }
+    
     return new GoogleGenAI({ apiKey });
 };
 
