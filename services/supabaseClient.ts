@@ -1,14 +1,15 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || '';
+const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL || 'https://fqsxjyizachjqpxncdmf.supabase.co';
+const supabaseAnonKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZxc3hqeWl6YWNoanFweG5jZG1mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1Mzk3OTAsImV4cCI6MjA4ODExNTc5MH0.lGvYSqOynu9HEN6Xd86L5cBT1pwNogW09UTuJ4TULjg';
 
 let supabase: SupabaseClient | null = null;
 
-if (supabaseUrl && supabaseAnonKey) {
+if (supabaseUrl && supabaseAnonKey && supabaseUrl !== 'undefined' && supabaseAnonKey !== 'undefined') {
+  console.log(`[Supabase Debug] Inizializzazione client con URL: ${supabaseUrl.substring(0, 15)}...`);
   supabase = createClient(supabaseUrl, supabaseAnonKey);
 } else {
-  console.warn("Supabase keys not found. Ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in environment variables.");
+  console.error("[Supabase Debug] Chiavi mancanti o non valide. Verifica VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY.");
 }
 
 export { supabase };

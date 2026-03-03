@@ -182,9 +182,15 @@ const COMMON_UI_DEFAULTS: Partial<UiTranslation> = {
  * Always initializes GoogleGenAI with process.env.API_KEY.
  */
 const getAIInstance = () => {
-    const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_API_KEY || (import.meta as any).env?.GEMINI_API_KEY;
-    if (!apiKey) {
-        throw new Error("API Key non trovata. Assicurati di aver impostato VITE_API_KEY o GEMINI_API_KEY nelle variabili d'ambiente.");
+    const apiKey = (process.env.API_KEY || process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_API_KEY || (import.meta as any).env?.GEMINI_API_KEY || "").trim();
+    
+    if (apiKey) {
+        const masked = `${apiKey.substring(0, 4)}...${apiKey.substring(apiKey.length - 4)}`;
+        console.log(`[Gemini Debug] Chiave API rilevata: ${masked}`);
+    }
+
+    if (!apiKey || apiKey === "undefined" || apiKey === "null" || apiKey === "") {
+        throw new Error("Chiave API non configurata. Verifica le variabili d'ambiente (VITE_API_KEY) su Vercel e assicurati di aver rifatto il Deploy.");
     }
     return new GoogleGenAI({ apiKey });
 };
