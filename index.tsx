@@ -4,7 +4,7 @@ import ReactDOM from 'react-dom/client';
 /**
  * BRIDGE GLOBALE: Inizializzazione Chiavi API.
  * Questo blocco garantisce che l'SDK Google GenAI trovi la chiave API corretta.
- * Mappa VITE_API_KEY (da Vercel/Vite) su process.env.API_KEY (richiesto dall'SDK).
+ * Mappa le variabili d'ambiente disponibili su process.env.API_KEY (richiesto dall'SDK).
  */
 if (typeof window !== 'undefined') {
   // Inizializza la gerarchia process.env globale se mancante
@@ -22,9 +22,9 @@ if (typeof window !== 'undefined') {
       console.log("Configurazione API: Chiave rilevata e collegata correttamente.");
     } else {
       // Fallback: controlla se è già presente in process.env (iniettata da altri script)
-      const existingKey = (window as any).process.env.API_KEY;
+      const existingKey = (window as any).process.env.API_KEY || (window as any).process.env.GEMINI_API_KEY;
       if (!existingKey) {
-        console.warn("Attenzione: VITE_API_KEY non trovata. Verifica le impostazioni su Vercel.");
+        console.warn("Attenzione: Chiave API non trovata nelle variabili d'ambiente.");
       }
     }
   } catch (err) {

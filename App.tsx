@@ -893,7 +893,7 @@ export const App: React.FC = () => {
       setIsPublished(false);
     } catch (err: any) {
         console.error("AI Generation Error:", err);
-        alert("Errore durante la generazione dell'anteprima. Verifica che la chiave API (VITE_API_KEY) sia configurata correttamente su Vercel e riprova. Dettaglio: " + err.message);
+        alert("Si è verificato un errore durante la generazione. I server AI potrebbero essere temporaneamente sovraccarichi. Riprova tra qualche istante. Dettaglio: " + err.message);
     } finally { setIsGenerating(false); }
   };
 
