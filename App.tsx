@@ -510,6 +510,27 @@ export const App: React.FC = () => {
     }
   }, [siteConfig.browserTitle, siteConfig.faviconUrl]);
 
+  // Confirmation before leaving when creating/editing
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // Show warning if in admin view and there's some content (new or being edited)
+      const hasUnsavedChanges = 
+        view === 'admin' && 
+        (product.name.trim() !== '' || 
+         product.description.trim() !== '' || 
+         generatedContent !== null);
+
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = ''; // Required for Chrome
+        return '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [view, product.name, product.description, generatedContent]);
+
   // FIX: Real-time user tracking using Supabase Presence
   useEffect(() => {
     if (!supabase || !isSupabaseConfigured()) return;
