@@ -182,15 +182,24 @@ const COMMON_UI_DEFAULTS: Partial<UiTranslation> = {
  * Always initializes GoogleGenAI with process.env.API_KEY.
  */
 const getAIInstance = () => {
-    const apiKey = (process.env.API_KEY || process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_API_KEY || (import.meta as any).env?.GEMINI_API_KEY || "").trim();
+    // Priority: 1. VITE_API_KEY (Vercel/Vite), 2. GEMINI_API_KEY, 3. process.env fallback
+    const apiKey = (
+        (import.meta as any).env?.VITE_API_KEY || 
+        (import.meta as any).env?.GEMINI_API_KEY || 
+        process.env.API_KEY || 
+        process.env.GEMINI_API_KEY || 
+        ""
+    ).trim();
     
     if (apiKey) {
         const masked = `${apiKey.substring(0, 4)}...${apiKey.substring(apiKey.length - 4)}`;
-        console.log(`[Gemini Debug] Chiave API rilevata: ${masked}`);
+        console.log(`[Gemini Debug] Chiave API caricata: ${masked}`);
+    } else {
+        console.error("[Gemini Debug] ATTENZIONE: Nessuna Chiave API trovata nelle variabili d'ambiente!");
     }
 
     if (!apiKey || apiKey === "undefined" || apiKey === "null" || apiKey === "") {
-        throw new Error("Chiave API non configurata. Verifica le variabili d'ambiente (VITE_API_KEY) su Vercel e assicurati di aver rifatto il Deploy.");
+        throw new Error("Configurazione incompleta: La chiave API (VITE_API_KEY) non è stata trovata. Assicurati di averla aggiunta su Vercel e di aver rifatto il Deploy con 'Force Rebuild'.");
     }
     return new GoogleGenAI({ apiKey });
 };

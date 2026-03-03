@@ -1189,6 +1189,35 @@ export const App: React.FC = () => {
                             if (!error) alert("Impostazioni salvate correttamente!");
                         }
                     }} className="bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">Salva Impostazioni</button>
+
+                    <div className="pt-6 border-t border-slate-100">
+                        <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-4 flex items-center gap-2">
+                            <Activity className="w-4 h-4 text-emerald-500" /> Stato Sistema (Debug)
+                        </h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-white rounded-lg shadow-sm"><Sparkles className="w-4 h-4 text-emerald-500" /></div>
+                                    <span className="text-xs font-bold text-slate-600">Gemini AI</span>
+                                </div>
+                                <span className={`text-[10px] font-black px-2 py-1 rounded-full ${((import.meta as any).env?.VITE_API_KEY || process.env.API_KEY) ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                                    {((import.meta as any).env?.VITE_API_KEY || process.env.API_KEY) ? 'CONFIGURATO ✅' : 'MANCANTE ❌'}
+                                </span>
+                            </div>
+                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-white rounded-lg shadow-sm"><Database className="w-4 h-4 text-blue-500" /></div>
+                                    <span className="text-xs font-bold text-slate-600">Supabase DB</span>
+                                </div>
+                                <span className={`text-[10px] font-black px-2 py-1 rounded-full ${isSupabaseConfigured() ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                                    {isSupabaseConfigured() ? 'CONFIGURATO ✅' : 'MANCANTE ❌'}
+                                </span>
+                            </div>
+                        </div>
+                        <p className="mt-3 text-[9px] text-slate-400 font-medium italic">
+                            * Se vedi "MANCANTE", aggiungi le variabili su Vercel e rifai il Deploy con "Force Rebuild".
+                        </p>
+                    </div>
                 </div>
             </div>
         ) : (
