@@ -512,14 +512,13 @@ export const App: React.FC = () => {
 
   // Confirmation before leaving when creating/editing
   useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      // Show warning if in admin view and there's some content (new or being edited)
-      const hasUnsavedChanges = 
-        view === 'admin' && 
-        (product.name.trim() !== '' || 
-         product.description.trim() !== '' || 
-         generatedContent !== null);
+    const hasUnsavedChanges = 
+      view === 'admin' && 
+      (product.name.trim() !== '' || 
+       product.description.trim() !== '' || 
+       generatedContent !== null);
 
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (hasUnsavedChanges) {
         e.preventDefault();
         e.returnValue = ''; // Required for Chrome
@@ -527,9 +526,30 @@ export const App: React.FC = () => {
       }
     };
 
+    const handlePopState = (e: PopStateEvent) => {
+      if (hasUnsavedChanges) {
+        if (!window.confirm("Sei sicuro di voler tornare indietro? Perderai le modifiche non salvate.")) {
+          // Re-push the state to stay on the current view
+          window.history.pushState(null, '', window.location.pathname);
+        }
+      }
+    };
+
     window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('popstate', handlePopState);
+    };
   }, [view, product.name, product.description, generatedContent]);
+
+  // Push state when entering admin to enable popstate protection
+  useEffect(() => {
+    if (view === 'admin') {
+      window.history.pushState({ admin: true }, '', window.location.pathname);
+    }
+  }, [view]);
 
   // FIX: Real-time user tracking using Supabase Presence
   useEffect(() => {
