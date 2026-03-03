@@ -6,10 +6,11 @@
 
 export const CONFIG = {
     GEMINI_API_KEY: 
+        (process as any).env?.API_KEY ||
+        (process as any).env?.GEMINI_API_KEY ||
         (import.meta as any).env?.VITE_API_KEY || 
         (import.meta as any).env?.GEMINI_API_KEY ||
         (process as any).env?.VITE_API_KEY ||
-        (process as any).env?.GEMINI_API_KEY ||
         "",
     
     SUPABASE_URL: 
