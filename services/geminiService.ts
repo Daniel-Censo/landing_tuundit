@@ -235,7 +235,7 @@ const cleanJson = (text: any) => {
 /**
  * Helper to call Gemini with retry logic for transient errors (like 503).
  */
-const callGeminiWithRetry = async (fn: () => Promise<any>, maxRetries = 8): Promise<any> => {
+const callGeminiWithRetry = async (fn: () => Promise<any>, maxRetries = 10): Promise<any> => {
     let lastError: any;
     for (let i = 0; i < maxRetries; i++) {
         try {
@@ -245,21 +245,23 @@ const callGeminiWithRetry = async (fn: () => Promise<any>, maxRetries = 8): Prom
             const errStr = JSON.stringify(err).toLowerCase();
             const errMsg = (err.message || "").toLowerCase();
             
+            // Rilevamento potenziato degli errori temporanei di Google
             const isTransient = 
                 errMsg.includes("503") || 
                 errMsg.includes("high demand") || 
                 errMsg.includes("unavailable") ||
+                errMsg.includes("busy") ||
                 errMsg.includes("rpc failed") ||
                 errMsg.includes("xhr error") ||
                 errStr.includes("503") ||
                 errStr.includes("unavailable") ||
-                errStr.includes("rpc failed") ||
-                errStr.includes("xhr error") ||
-                errStr.includes("429");
+                errStr.includes("429") ||
+                errStr.includes("deadline_exceeded");
             
             if (isTransient && i < maxRetries - 1) {
-                const delay = Math.pow(2, i + 1) * 4000 + Math.random() * 1000;
-                console.warn(`[Gemini] Problema di rete o server occupato. Riprovo tra ${Math.round(delay)}ms... (Tentativo ${i + 1}/${maxRetries})`);
+                // Backoff esponenziale: aspetta sempre di più ad ogni tentativo
+                const delay = Math.pow(1.5, i + 1) * 3000 + Math.random() * 2000;
+                console.warn(`[Gemini] Server occupato (503/429). Riprovo tra ${Math.round(delay)}ms... (Tentativo ${i + 1}/${maxRetries})`);
                 await new Promise(resolve => setTimeout(resolve, delay));
                 continue;
             }
@@ -298,124 +300,144 @@ export const generateLandingPage = async (product: ProductDetails, reviewCount: 
       - bottomOffer.ctaText: A long persuasive button text like "Acquista Ora e Rivoluziona i Tuoi Lavori con Sconto del 50%" (personalized for this specific product niche).
     - Follow the GeneratedContent interface structure strictly.`;
 
-    const response = await callGeminiWithRetry(() => ai.models.generateContent({
-        model: 'gemini-2.0-flash',
-        contents: prompt,
-        config: {
-            responseMimeType: "application/json",
-            responseSchema: {
-                type: Type.OBJECT,
-                properties: {
-                    headline: { type: Type.STRING },
-                    subheadline: { type: Type.STRING },
-                    ctaText: { type: Type.STRING },
-                    ctaSubtext: { type: Type.STRING },
-                    announcements: {
-                        type: Type.ARRAY,
-                        items: {
-                            type: Type.OBJECT,
-                            properties: {
-                                text: { type: Type.STRING },
-                                icon: { type: Type.STRING }
-                            },
-                            required: ["text", "icon"]
-                        }
-                    },
-                    featuresSectionTitle: { type: Type.STRING },
-                    benefits: { type: Type.ARRAY, items: { type: Type.STRING } },
-                    features: {
-                        type: Type.ARRAY,
-                        items: {
-                            type: Type.OBJECT,
-                            properties: {
-                                title: { type: Type.STRING },
-                                description: { type: Type.STRING },
-                                showCta: { type: Type.BOOLEAN }
-                            },
-                            required: ["title", "description"]
-                        }
-                    },
-                    boxContent: {
-                        type: Type.OBJECT,
-                        properties: {
-                            title: { type: Type.STRING },
-                            items: { type: Type.ARRAY, items: { type: Type.STRING } }
-                        },
-                        required: ["title", "items"]
-                    },
-                    bottomOffer: {
-                        type: Type.OBJECT,
-                        properties: {
-                            title: { type: Type.STRING },
-                            subtitle: { type: Type.STRING },
-                            ctaText: { type: Type.STRING },
-                            scarcityText: { type: Type.STRING }
-                        },
-                        required: ["title", "subtitle", "ctaText", "scarcityText"]
-                    },
-                    uiTranslation: { 
-                        type: Type.OBJECT,
-                        properties: {
-                            reviews: { type: Type.STRING },
-                            checkoutHeader: { type: Type.STRING },
-                            completeOrder: { type: Type.STRING },
-                            shippingInsurance: { type: Type.STRING },
-                            shippingInsuranceDescription: { type: Type.STRING },
-                            gadgetLabel: { type: Type.STRING },
-                            gadgetDescription: { type: Type.STRING },
-                            paymentMethod: { type: Type.STRING },
-                            cod: { type: Type.STRING },
-                            card: { type: Type.STRING },
-                            shippingInfo: { type: Type.STRING },
-                            secure: { type: Type.STRING },
-                            returns: { type: Type.STRING },
-                            original: { type: Type.STRING },
-                            express: { type: Type.STRING },
-                            warranty: { type: Type.STRING },
-                            certified: { type: Type.STRING },
-                            techDesign: { type: Type.STRING },
-                            privacyPolicy: { type: Type.STRING },
-                            termsConditions: { type: Type.STRING },
-                            cookiePolicy: { type: Type.STRING },
-                            rightsReserved: { type: Type.STRING },
-                            generatedPageNote: { type: Type.STRING },
-                            nameLabel: { type: Type.STRING },
-                            phoneLabel: { type: Type.STRING },
-                            emailLabel: { type: Type.STRING },
-                            addressLabel: { type: Type.STRING },
-                            cityLabel: { type: Type.STRING },
-                            capLabel: { type: Type.STRING },
-                            provinceLabel: { type: Type.STRING },
-                            addressNumberLabel: { type: Type.STRING },
-                            legalDisclaimer: { type: Type.STRING },
-                            thankYouTitle: { type: Type.STRING },
-                            thankYouMsg: { type: Type.STRING },
-                            socialProofAction: { type: Type.STRING },
-                            socialProofFrom: { type: Type.STRING },
-                            socialProofBadgeName: { type: Type.STRING },
-                            socialProof: { type: Type.STRING },
-                            onlyLeft: { type: Type.STRING },
-                            summaryProduct: { type: Type.STRING },
-                            summaryShipping: { type: Type.STRING },
-                            summaryInsurance: { type: Type.STRING },
-                            summaryGadget: { type: Type.STRING },
-                            summaryTotal: { type: Type.STRING },
-                            localizedCities: { type: Type.ARRAY, items: { type: Type.STRING } },
-                            localizedNames: { type: Type.ARRAY, items: { type: Type.STRING } },
-                            timelineOrdered: { type: Type.STRING },
-                            timelineReady: { type: Type.STRING },
-                            timelineDelivered: { type: Type.STRING }
-                        }
-                    },
-                    price: { type: Type.STRING },
-                    originalPrice: { type: Type.STRING },
-                },
-                required: ["headline", "subheadline", "ctaText", "benefits", "features", "uiTranslation", "announcements", "boxContent", "bottomOffer"]
-            }
-        }
-    }));
+    // Strategia di Fallback: se il modello principale è occupato (503), proviamo quello di riserva
+    const modelsToTry = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-3-flash-preview'];
+    let lastError: any;
+    let finalResponse: any = null;
 
-    const responseText = response.text || '{}';
+    for (const modelName of modelsToTry) {
+        try {
+            console.log(`[Gemini] Tentativo generazione con modello: ${modelName}`);
+            finalResponse = await callGeminiWithRetry(() => ai.models.generateContent({
+                model: modelName,
+                contents: prompt,
+                config: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: Type.OBJECT,
+                        properties: {
+                            headline: { type: Type.STRING },
+                            subheadline: { type: Type.STRING },
+                            ctaText: { type: Type.STRING },
+                            ctaSubtext: { type: Type.STRING },
+                            announcements: {
+                                type: Type.ARRAY,
+                                items: {
+                                    type: Type.OBJECT,
+                                    properties: {
+                                        text: { type: Type.STRING },
+                                        icon: { type: Type.STRING }
+                                    },
+                                    required: ["text", "icon"]
+                                }
+                            },
+                            featuresSectionTitle: { type: Type.STRING },
+                            benefits: { type: Type.ARRAY, items: { type: Type.STRING } },
+                            features: {
+                                type: Type.ARRAY,
+                                items: {
+                                    type: Type.OBJECT,
+                                    properties: {
+                                        title: { type: Type.STRING },
+                                        description: { type: Type.STRING },
+                                        showCta: { type: Type.BOOLEAN }
+                                    },
+                                    required: ["title", "description"]
+                                }
+                            },
+                            boxContent: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    title: { type: Type.STRING },
+                                    items: { type: Type.ARRAY, items: { type: Type.STRING } }
+                                },
+                                required: ["title", "items"]
+                            },
+                            bottomOffer: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    title: { type: Type.STRING },
+                                    subtitle: { type: Type.STRING },
+                                    ctaText: { type: Type.STRING },
+                                    scarcityText: { type: Type.STRING }
+                                },
+                                required: ["title", "subtitle", "ctaText", "scarcityText"]
+                            },
+                            uiTranslation: { 
+                                type: Type.OBJECT,
+                                properties: {
+                                    reviews: { type: Type.STRING },
+                                    checkoutHeader: { type: Type.STRING },
+                                    completeOrder: { type: Type.STRING },
+                                    shippingInsurance: { type: Type.STRING },
+                                    shippingInsuranceDescription: { type: Type.STRING },
+                                    gadgetLabel: { type: Type.STRING },
+                                    gadgetDescription: { type: Type.STRING },
+                                    paymentMethod: { type: Type.STRING },
+                                    cod: { type: Type.STRING },
+                                    card: { type: Type.STRING },
+                                    shippingInfo: { type: Type.STRING },
+                                    secure: { type: Type.STRING },
+                                    returns: { type: Type.STRING },
+                                    original: { type: Type.STRING },
+                                    express: { type: Type.STRING },
+                                    warranty: { type: Type.STRING },
+                                    certified: { type: Type.STRING },
+                                    techDesign: { type: Type.STRING },
+                                    privacyPolicy: { type: Type.STRING },
+                                    termsConditions: { type: Type.STRING },
+                                    cookiePolicy: { type: Type.STRING },
+                                    rightsReserved: { type: Type.STRING },
+                                    generatedPageNote: { type: Type.STRING },
+                                    nameLabel: { type: Type.STRING },
+                                    phoneLabel: { type: Type.STRING },
+                                    emailLabel: { type: Type.STRING },
+                                    addressLabel: { type: Type.STRING },
+                                    cityLabel: { type: Type.STRING },
+                                    capLabel: { type: Type.STRING },
+                                    provinceLabel: { type: Type.STRING },
+                                    addressNumberLabel: { type: Type.STRING },
+                                    legalDisclaimer: { type: Type.STRING },
+                                    thankYouTitle: { type: Type.STRING },
+                                    thankYouMsg: { type: Type.STRING },
+                                    socialProofAction: { type: Type.STRING },
+                                    socialProofFrom: { type: Type.STRING },
+                                    socialProofBadgeName: { type: Type.STRING },
+                                    socialProof: { type: Type.STRING },
+                                    onlyLeft: { type: Type.STRING },
+                                    summaryProduct: { type: Type.STRING },
+                                    summaryShipping: { type: Type.STRING },
+                                    summaryInsurance: { type: Type.STRING },
+                                    summaryGadget: { type: Type.STRING },
+                                    summaryTotal: { type: Type.STRING },
+                                    localizedCities: { type: Type.ARRAY, items: { type: Type.STRING } },
+                                    localizedNames: { type: Type.ARRAY, items: { type: Type.STRING } },
+                                    timelineOrdered: { type: Type.STRING },
+                                    timelineReady: { type: Type.STRING },
+                                    timelineDelivered: { type: Type.STRING }
+                                }
+                            },
+                            price: { type: Type.STRING },
+                            originalPrice: { type: Type.STRING },
+                        },
+                        required: ["headline", "subheadline", "ctaText", "benefits", "features", "uiTranslation", "announcements", "boxContent", "bottomOffer"]
+                    }
+                }
+            }));
+            break; // Successo! Esci dal loop
+        } catch (err: any) {
+            lastError = err;
+            const errStr = JSON.stringify(err).toLowerCase();
+            if (!errStr.includes("503") && !errStr.includes("high demand") && !errStr.includes("unavailable")) {
+                throw err;
+            }
+            console.warn(`[Gemini] Modello ${modelName} occupato, provo il prossimo...`);
+        }
+    }
+
+    if (!finalResponse) throw lastError;
+
+    const responseText = finalResponse.text || '{}';
     const baseContent = JSON.parse(cleanJson(responseText)) as any;
     
     const randomSocialProofCount = Math.floor(Math.random() * (1500 - 401) + 401);
