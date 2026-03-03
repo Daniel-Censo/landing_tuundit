@@ -564,9 +564,10 @@ export const generateReviews = async (product: ProductDetails, language: string,
 export const generateActionImages = async (product: ProductDetails, styles: AIImageStyle[], count: number, customPrompt?: string): Promise<string[]> => {
     const ai = getAIInstance();
     const referenceImages = (product.images || []).filter(img => img.startsWith('data:image'));
+    const results: string[] = [];
 
-    // Eseguiamo le generazioni in parallelo per velocità e per rispettare il numero richiesto
-    const generationTasks = Array.from({ length: count }).map(async (_, i) => {
+    // Generazione SEQUENZIALE per evitare l'errore 429 (Too Many Requests) su chiavi gratuite
+    for (let i = 0; i < count; i++) {
         const style = styles[i % styles.length];
         const stylePrompts: Record<AIImageStyle, string> = {
             'lifestyle': 'Place the product in a realistic home or outdoor environment with natural lighting and human interaction.',
@@ -598,6 +599,7 @@ export const generateActionImages = async (product: ProductDetails, styles: AIIm
         }
 
         try {
+            console.log(`[Gemini] Generazione immagine ${i + 1}/${count} in corso...`);
             const response = await callGeminiWithRetry(() => ai.models.generateContent({
                 model: 'gemini-2.5-flash-image',
                 contents: { parts: contentsParts },
@@ -608,16 +610,19 @@ export const generateActionImages = async (product: ProductDetails, styles: AIIm
 
             const part = response.candidates?.[0]?.content?.parts.find(p => p.inlineData);
             if (part?.inlineData?.data) {
-                return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+                results.push(`data:${part.inlineData.mimeType};base64,${part.inlineData.data}`);
+            }
+            
+            // Piccola pausa tra le immagini per essere sicuri di non colpire il rate limit
+            if (i < count - 1) {
+                await new Promise(resolve => setTimeout(resolve, 1500));
             }
         } catch (err) {
             console.error(`AI Image generation task ${i} failed:`, err);
         }
-        return null;
-    });
+    }
 
-    const results = await Promise.all(generationTasks);
-    return results.filter(img => img !== null) as string[];
+    return results;
 };
 
 export const rewriteLandingPage = async (content: GeneratedContent, tone: PageTone): Promise<GeneratedContent> => {
