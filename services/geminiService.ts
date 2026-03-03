@@ -237,10 +237,11 @@ const callGeminiWithRetry = async (fn: () => Promise<any>, maxRetries = 3): Prom
             lastError = err;
             const isTransient = err.message?.includes("503") || 
                                err.message?.includes("high demand") || 
-                               err.message?.includes("UNAVAILABLE");
+                               err.message?.includes("UNAVAILABLE") ||
+                               JSON.stringify(err).includes("503");
             
             if (isTransient && i < maxRetries - 1) {
-                const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
+                const delay = Math.pow(2, i + 1) * 2000 + Math.random() * 1000; // Increased delay
                 console.warn(`Gemini API busy (503). Retrying in ${Math.round(delay)}ms... (Attempt ${i + 1}/${maxRetries})`);
                 await new Promise(resolve => setTimeout(resolve, delay));
                 continue;
@@ -281,7 +282,7 @@ export const generateLandingPage = async (product: ProductDetails, reviewCount: 
     - Follow the GeneratedContent interface structure strictly.`;
 
     const response = await callGeminiWithRetry(() => ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-3.1-pro-preview',
         contents: prompt,
         config: {
             responseMimeType: "application/json",
@@ -510,7 +511,7 @@ export const generateReviews = async (product: ProductDetails, language: string,
 
         try {
             const response = await callGeminiWithRetry(() => ai.models.generateContent({
-                model: 'gemini-3-flash-preview',
+                model: 'gemini-3.1-pro-preview',
                 contents: { parts: contentsParts },
                 config: {
                     responseMimeType: "application/json",
@@ -625,7 +626,7 @@ export const rewriteLandingPage = async (content: GeneratedContent, tone: PageTo
     const prompt = `Rewrite the following landing page content to have a ${tone} tone in Italiano: ${JSON.stringify(textFields)}`;
 
     const response = await callGeminiWithRetry(() => ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-3.1-pro-preview',
         contents: prompt,
         config: {
             responseMimeType: "application/json",
