@@ -1,16 +1,14 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { CONFIG } from '../config';
 
-const supabaseUrl = CONFIG.SUPABASE_URL;
-const supabaseAnonKey = CONFIG.SUPABASE_ANON_KEY;
+const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL || 'https://pfibqddazgugggtrjymr.supabase.co';
+const supabaseAnonKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBmaWJxZGRhemd1Z2dndHJqeW1yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgwMzg3MTIsImV4cCI6MjA4MzYxNDcxMn0.6yfcoo49-QCiNiZrljIV32OFWWp9XMHgHoWNnoypn78';
 
 let supabase: SupabaseClient | null = null;
 
-if (supabaseUrl && supabaseAnonKey && supabaseUrl !== 'undefined' && supabaseAnonKey !== 'undefined') {
-  console.log(`[Supabase Debug] Inizializzazione client con URL: ${supabaseUrl.substring(0, 15)}...`);
+if (supabaseUrl && supabaseAnonKey) {
   supabase = createClient(supabaseUrl, supabaseAnonKey);
 } else {
-  console.error("[Supabase Debug] Chiavi mancanti o non valide. Verifica VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY.");
+  console.warn("Supabase keys not found. Ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in environment variables.");
 }
 
 export { supabase };

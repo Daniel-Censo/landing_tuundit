@@ -1,6 +1,5 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { CONFIG, checkConfig } from './config';
 import { supabase, isSupabaseConfigured, base64ToBlob, uploadImage, compressImage } from './services/supabaseClient';
 import { generateLandingPage, generateReviews, generateActionImages, translateLandingPage, rewriteLandingPage, getLanguageConfig, TIKTOK_SLIDER_HTML } from './services/geminiService';
 import LandingPage, { ThankYouPage } from './components/LandingPage';
@@ -434,10 +433,6 @@ const EditorSection: React.FC<{ title: string; num: string | number; icon: React
 };
 
 export const App: React.FC = () => {
-  useEffect(() => {
-    checkConfig();
-  }, []);
-
   // Stati principali
   const [isInitializing, setIsInitializing] = useState(true);
   const [view, setView] = useState<'home' | 'product_view' | 'thank_you_view' | 'admin' | 'preview'>('home');
@@ -517,13 +512,14 @@ export const App: React.FC = () => {
 
   // Confirmation before leaving when creating/editing
   useEffect(() => {
-    const hasUnsavedChanges = 
-      view === 'admin' && 
-      (product.name.trim() !== '' || 
-       product.description.trim() !== '' || 
-       generatedContent !== null);
-
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // Show warning if in admin view and there's some content (new or being edited)
+      const hasUnsavedChanges = 
+        view === 'admin' && 
+        (product.name.trim() !== '' || 
+         product.description.trim() !== '' || 
+         generatedContent !== null);
+
       if (hasUnsavedChanges) {
         e.preventDefault();
         e.returnValue = ''; // Required for Chrome
@@ -531,30 +527,9 @@ export const App: React.FC = () => {
       }
     };
 
-    const handlePopState = (e: PopStateEvent) => {
-      if (hasUnsavedChanges) {
-        if (!window.confirm("Sei sicuro di voler tornare indietro? Perderai le modifiche non salvate.")) {
-          // Re-push the state to stay on the current view
-          window.history.pushState(null, '', window.location.pathname);
-        }
-      }
-    };
-
     window.addEventListener('beforeunload', handleBeforeUnload);
-    window.addEventListener('popstate', handlePopState);
-
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      window.removeEventListener('popstate', handlePopState);
-    };
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [view, product.name, product.description, generatedContent]);
-
-  // Push state when entering admin to enable popstate protection
-  useEffect(() => {
-    if (view === 'admin') {
-      window.history.pushState({ admin: true }, '', window.location.pathname);
-    }
-  }, [view]);
 
   // FIX: Real-time user tracking using Supabase Presence
   useEffect(() => {
@@ -1194,42 +1169,6 @@ export const App: React.FC = () => {
                             if (!error) alert("Impostazioni salvate correttamente!");
                         }
                     }} className="bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">Salva Impostazioni</button>
-
-                    <div className="pt-6 border-t border-slate-100">
-                        <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-4 flex items-center gap-2">
-                            <Activity className="w-4 h-4 text-emerald-500" /> Stato Sistema (Debug)
-                        </h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-white rounded-lg shadow-sm"><Sparkles className="w-4 h-4 text-emerald-500" /></div>
-                                    <span className="text-xs font-bold text-slate-600">Gemini AI</span>
-                                </div>
-                                <div className="flex flex-col items-end gap-1">
-                                    <span className={`text-[10px] font-black px-2 py-1 rounded-full ${CONFIG.GEMINI_API_KEY ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                                        {CONFIG.GEMINI_API_KEY ? 'CONFIGURATO ✅' : 'MANCANTE ❌'}
-                                    </span>
-                                    {CONFIG.GEMINI_API_KEY && (
-                                        <span className="text-[8px] font-mono text-slate-400">
-                                            {CONFIG.GEMINI_API_KEY.substring(0, 4)}...{CONFIG.GEMINI_API_KEY.substring(CONFIG.GEMINI_API_KEY.length - 4)}
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-white rounded-lg shadow-sm"><Database className="w-4 h-4 text-blue-500" /></div>
-                                    <span className="text-xs font-bold text-slate-600">Supabase DB</span>
-                                </div>
-                                <span className={`text-[10px] font-black px-2 py-1 rounded-full ${isSupabaseConfigured() ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                                    {isSupabaseConfigured() ? 'CONFIGURATO ✅' : 'MANCANTE ❌'}
-                                </span>
-                            </div>
-                        </div>
-                        <p className="mt-3 text-[9px] text-slate-400 font-medium italic">
-                            * Se vedi "MANCANTE", aggiungi le variabili su Vercel e rifai il Deploy con "Force Rebuild".
-                        </p>
-                    </div>
                 </div>
             </div>
         ) : (
