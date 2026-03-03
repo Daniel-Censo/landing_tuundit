@@ -182,24 +182,19 @@ const COMMON_UI_DEFAULTS: Partial<UiTranslation> = {
  * Always initializes GoogleGenAI with process.env.API_KEY.
  */
 const getAIInstance = () => {
-    // Priority: 1. VITE_API_KEY (Vercel/Vite), 2. GEMINI_API_KEY, 3. process.env fallback
     const apiKey = (
         (import.meta as any).env?.VITE_API_KEY || 
-        (import.meta as any).env?.GEMINI_API_KEY || 
-        process.env.API_KEY || 
         process.env.GEMINI_API_KEY || 
         ""
     ).trim();
     
-    if (apiKey) {
-        const masked = `${apiKey.substring(0, 4)}...${apiKey.substring(apiKey.length - 4)}`;
-        console.log(`[Gemini Debug] Chiave API caricata: ${masked}`);
-    } else {
-        console.error("[Gemini Debug] ATTENZIONE: Nessuna Chiave API trovata nelle variabili d'ambiente!");
+    if (apiKey && apiKey !== "undefined" && apiKey !== "") {
+        const masked = `${apiKey.substring(0, 4)}...`;
+        console.log(`[Gemini Debug] API Key in uso: ${masked}`);
     }
 
-    if (!apiKey || apiKey === "undefined" || apiKey === "null" || apiKey === "") {
-        throw new Error("Configurazione incompleta: La chiave API (VITE_API_KEY) non è stata trovata. Assicurati di averla aggiunta su Vercel e di aver rifatto il Deploy con 'Force Rebuild'.");
+    if (!apiKey || apiKey === "undefined" || apiKey === "") {
+        throw new Error("ERRORE: Chiave API non trovata. Verifica di aver aggiunto VITE_API_KEY su Vercel e di aver fatto il REDEPLOY con 'Force Rebuild'.");
     }
     return new GoogleGenAI({ apiKey });
 };
@@ -291,7 +286,7 @@ export const generateLandingPage = async (product: ProductDetails, reviewCount: 
     - Follow the GeneratedContent interface structure strictly.`;
 
     const response = await callGeminiWithRetry(() => ai.models.generateContent({
-        model: 'gemini-3.1-pro-preview',
+        model: 'gemini-3-flash-preview',
         contents: prompt,
         config: {
             responseMimeType: "application/json",
@@ -520,7 +515,7 @@ export const generateReviews = async (product: ProductDetails, language: string,
 
         try {
             const response = await callGeminiWithRetry(() => ai.models.generateContent({
-                model: 'gemini-3.1-pro-preview',
+                model: 'gemini-3-flash-preview',
                 contents: { parts: contentsParts },
                 config: {
                     responseMimeType: "application/json",
@@ -635,7 +630,7 @@ export const rewriteLandingPage = async (content: GeneratedContent, tone: PageTo
     const prompt = `Rewrite the following landing page content to have a ${tone} tone in Italiano: ${JSON.stringify(textFields)}`;
 
     const response = await callGeminiWithRetry(() => ai.models.generateContent({
-        model: 'gemini-3.1-pro-preview',
+        model: 'gemini-3-flash-preview',
         contents: prompt,
         config: {
             responseMimeType: "application/json",
