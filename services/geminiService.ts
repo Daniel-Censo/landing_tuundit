@@ -239,17 +239,24 @@ const callGeminiWithRetry = async (fn: () => Promise<any>, maxRetries = 8): Prom
             return await fn();
         } catch (err: any) {
             lastError = err;
-            const errStr = JSON.stringify(err);
-            const isTransient = err.message?.includes("503") || 
-                               err.message?.includes("high demand") || 
-                               err.message?.includes("UNAVAILABLE") ||
-                               errStr.includes("503") ||
-                               errStr.includes("UNAVAILABLE") ||
-                               errStr.includes("429"); // Aggiunto anche limite di velocità
+            const errStr = JSON.stringify(err).toLowerCase();
+            const errMsg = (err.message || "").toLowerCase();
+            
+            const isTransient = 
+                errMsg.includes("503") || 
+                errMsg.includes("high demand") || 
+                errMsg.includes("unavailable") ||
+                errMsg.includes("rpc failed") ||
+                errMsg.includes("xhr error") ||
+                errStr.includes("503") ||
+                errStr.includes("unavailable") ||
+                errStr.includes("rpc failed") ||
+                errStr.includes("xhr error") ||
+                errStr.includes("429");
             
             if (isTransient && i < maxRetries - 1) {
-                const delay = Math.pow(2, i + 1) * 4000 + Math.random() * 1000; // Attesa crescente (8s, 16s, 32s...)
-                console.warn(`[Gemini] Server occupato o limite raggiunto. Attendo ${Math.round(delay)}ms e riprovo... (Tentativo ${i + 1}/${maxRetries})`);
+                const delay = Math.pow(2, i + 1) * 4000 + Math.random() * 1000;
+                console.warn(`[Gemini] Problema di rete o server occupato. Riprovo tra ${Math.round(delay)}ms... (Tentativo ${i + 1}/${maxRetries})`);
                 await new Promise(resolve => setTimeout(resolve, delay));
                 continue;
             }
@@ -289,7 +296,7 @@ export const generateLandingPage = async (product: ProductDetails, reviewCount: 
     - Follow the GeneratedContent interface structure strictly.`;
 
     const response = await callGeminiWithRetry(() => ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-2.0-flash',
         contents: prompt,
         config: {
             responseMimeType: "application/json",
@@ -518,7 +525,7 @@ export const generateReviews = async (product: ProductDetails, language: string,
 
         try {
             const response = await callGeminiWithRetry(() => ai.models.generateContent({
-                model: 'gemini-3-flash-preview',
+                model: 'gemini-2.0-flash',
                 contents: { parts: contentsParts },
                 config: {
                     responseMimeType: "application/json",
@@ -633,7 +640,7 @@ export const rewriteLandingPage = async (content: GeneratedContent, tone: PageTo
     const prompt = `Rewrite the following landing page content to have a ${tone} tone in Italiano: ${JSON.stringify(textFields)}`;
 
     const response = await callGeminiWithRetry(() => ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-2.0-flash',
         contents: prompt,
         config: {
             responseMimeType: "application/json",
