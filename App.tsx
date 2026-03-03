@@ -1200,9 +1200,16 @@ export const App: React.FC = () => {
                                     <div className="p-2 bg-white rounded-lg shadow-sm"><Sparkles className="w-4 h-4 text-emerald-500" /></div>
                                     <span className="text-xs font-bold text-slate-600">Gemini AI</span>
                                 </div>
-                                <span className={`text-[10px] font-black px-2 py-1 rounded-full ${((import.meta as any).env?.VITE_API_KEY || process.env.API_KEY) ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                                    {((import.meta as any).env?.VITE_API_KEY || process.env.API_KEY) ? 'CONFIGURATO ✅' : 'MANCANTE ❌'}
-                                </span>
+                                <div className="flex flex-col items-end gap-1">
+                                    <span className={`text-[10px] font-black px-2 py-1 rounded-full ${((import.meta as any).env?.VITE_API_KEY) ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                                        {((import.meta as any).env?.VITE_API_KEY) ? 'CONFIGURATO ✅' : 'MANCANTE ❌'}
+                                    </span>
+                                    {((import.meta as any).env?.VITE_API_KEY) && (
+                                        <span className="text-[8px] font-mono text-slate-400">
+                                            {(import.meta as any).env.VITE_API_KEY.substring(0, 4)}...{(import.meta as any).env.VITE_API_KEY.substring((import.meta as any).env.VITE_API_KEY.length - 4)}
+                                        </span>
+                                    )}
+                                </div>
                             </div>
                             <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
                                 <div className="flex items-center gap-3">

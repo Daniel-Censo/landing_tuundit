@@ -182,19 +182,15 @@ const COMMON_UI_DEFAULTS: Partial<UiTranslation> = {
  * Always initializes GoogleGenAI with process.env.API_KEY.
  */
 const getAIInstance = () => {
-    const apiKey = (
-        (import.meta as any).env?.VITE_API_KEY || 
-        process.env.GEMINI_API_KEY || 
-        ""
-    ).trim();
+    const apiKey = (import.meta as any).env?.VITE_API_KEY || "";
     
-    if (apiKey && apiKey !== "undefined" && apiKey !== "") {
+    if (apiKey && apiKey.length > 5) {
         const masked = `${apiKey.substring(0, 4)}...`;
         console.log(`[Gemini Debug] API Key in uso: ${masked}`);
     }
 
     if (!apiKey || apiKey === "undefined" || apiKey === "") {
-        throw new Error("ERRORE: Chiave API non trovata. Verifica di aver aggiunto VITE_API_KEY su Vercel e di aver fatto il REDEPLOY con 'Force Rebuild'.");
+        throw new Error("ERRORE: Chiave API (VITE_API_KEY) non trovata su Vercel. Assicurati di aver fatto il REDEPLOY con 'Force Rebuild'.");
     }
     return new GoogleGenAI({ apiKey });
 };
@@ -286,7 +282,7 @@ export const generateLandingPage = async (product: ProductDetails, reviewCount: 
     - Follow the GeneratedContent interface structure strictly.`;
 
     const response = await callGeminiWithRetry(() => ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-flash-latest',
         contents: prompt,
         config: {
             responseMimeType: "application/json",
@@ -515,7 +511,7 @@ export const generateReviews = async (product: ProductDetails, language: string,
 
         try {
             const response = await callGeminiWithRetry(() => ai.models.generateContent({
-                model: 'gemini-3-flash-preview',
+                model: 'gemini-flash-latest',
                 contents: { parts: contentsParts },
                 config: {
                     responseMimeType: "application/json",
@@ -630,7 +626,7 @@ export const rewriteLandingPage = async (content: GeneratedContent, tone: PageTo
     const prompt = `Rewrite the following landing page content to have a ${tone} tone in Italiano: ${JSON.stringify(textFields)}`;
 
     const response = await callGeminiWithRetry(() => ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-flash-latest',
         contents: prompt,
         config: {
             responseMimeType: "application/json",
