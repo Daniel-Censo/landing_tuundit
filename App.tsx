@@ -510,6 +510,27 @@ export const App: React.FC = () => {
     }
   }, [siteConfig.browserTitle, siteConfig.faviconUrl]);
 
+  // Confirmation before leaving when creating/editing
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // Show warning if in admin view and there's some content (new or being edited)
+      const hasUnsavedChanges = 
+        view === 'admin' && 
+        (product.name.trim() !== '' || 
+         product.description.trim() !== '' || 
+         generatedContent !== null);
+
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = ''; // Required for Chrome
+        return '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [view, product.name, product.description, generatedContent]);
+
   // FIX: Real-time user tracking using Supabase Presence
   useEffect(() => {
     if (!supabase || !isSupabaseConfigured()) return;
@@ -893,7 +914,7 @@ export const App: React.FC = () => {
       setIsPublished(false);
     } catch (err: any) {
         console.error("AI Generation Error:", err);
-        alert("Si è verificato un errore durante la generazione. I server AI potrebbero essere temporaneamente sovraccarichi. Riprova tra qualche istante. Dettaglio: " + err.message);
+        alert("Errore durante la generazione dell'anteprima. Verifica che la chiave API (VITE_API_KEY) sia configurata correttamente su Vercel e riprova. Dettaglio: " + err.message);
     } finally { setIsGenerating(false); }
   };
 
@@ -1105,6 +1126,42 @@ export const App: React.FC = () => {
         {adminSection === 'settings' ? (
             <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-200 animate-in fade-in duration-500 max-w-2xl">
                 <h2 className="text-xl font-bold mb-6 flex items-center gap-2 text-slate-900"><Settings className="w-5 h-5 text-emerald-600" /> Impostazioni Sito</h2>
+                
+                {/* Vercel Deployment Info */}
+                <div className="mb-8 space-y-4">
+                    <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl">
+                        <h3 className="text-sm font-black text-blue-900 flex items-center gap-2 mb-2">
+                            <Rocket className="w-4 h-4" /> CONFIGURAZIONE AI (GEMINI)
+                        </h3>
+                        <p className="text-xs text-blue-700 leading-relaxed mb-3">
+                            Per la generazione AI su Vercel, aggiungi questa variabile:
+                        </p>
+                        <div className="bg-white p-3 rounded-lg border border-blue-200 flex items-center justify-between group">
+                            <code className="text-[11px] font-black text-slate-900">VITE_GEMINI_API_KEY</code>
+                            <span className="text-[10px] text-blue-500 font-bold opacity-0 group-hover:opacity-100 transition-opacity">Copia</span>
+                        </div>
+                    </div>
+
+                    <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl">
+                        <h3 className="text-sm font-black text-emerald-900 flex items-center gap-2 mb-2">
+                            <Database className="w-4 h-4" /> CONFIGURAZIONE DATABASE (SUPABASE)
+                        </h3>
+                        <p className="text-xs text-emerald-700 leading-relaxed mb-3">
+                            Per collegare il tuo database Supabase su Vercel, aggiungi queste due variabili:
+                        </p>
+                        <div className="space-y-2">
+                            <div className="bg-white p-3 rounded-lg border border-emerald-200 flex items-center justify-between group">
+                                <code className="text-[11px] font-black text-slate-900">VITE_SUPABASE_URL</code>
+                                <span className="text-[10px] text-emerald-500 font-bold opacity-0 group-hover:opacity-100 transition-opacity">Copia</span>
+                            </div>
+                            <div className="bg-white p-3 rounded-lg border border-emerald-200 flex items-center justify-between group">
+                                <code className="text-[11px] font-black text-slate-900">VITE_SUPABASE_ANON_KEY</code>
+                                <span className="text-[10px] text-emerald-500 font-bold opacity-0 group-hover:opacity-100 transition-opacity">Copia</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>

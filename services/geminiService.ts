@@ -182,9 +182,16 @@ const COMMON_UI_DEFAULTS: Partial<UiTranslation> = {
  * Always initializes GoogleGenAI with process.env.API_KEY.
  */
 const getAIInstance = () => {
-    const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY || (import.meta as any).env?.VITE_API_KEY || (import.meta as any).env?.GEMINI_API_KEY;
+    // Priority: process.env (bridged in index.tsx) > import.meta.env
+    const apiKey = 
+        (typeof process !== 'undefined' && (process.env.GEMINI_API_KEY || process.env.API_KEY)) ||
+        (import.meta as any).env?.VITE_GEMINI_API_KEY || 
+        (import.meta as any).env?.GEMINI_API_KEY ||
+        (import.meta as any).env?.VITE_API_KEY || 
+        (import.meta as any).env?.API_KEY;
+
     if (!apiKey) {
-        throw new Error("API Key non trovata. Assicurati che la chiave sia configurata correttamente.");
+        throw new Error("API Key non trovata. Assicurati di aver impostato VITE_GEMINI_API_KEY nelle variabili d'ambiente di Vercel.");
     }
     return new GoogleGenAI({ apiKey });
 };
@@ -222,23 +229,20 @@ const cleanJson = (text: any) => {
 /**
  * Helper to call Gemini with retry logic for transient errors (like 503).
  */
-const callGeminiWithRetry = async (fn: () => Promise<any>, maxRetries = 5): Promise<any> => {
+const callGeminiWithRetry = async (fn: () => Promise<any>, maxRetries = 3): Promise<any> => {
     let lastError: any;
     for (let i = 0; i < maxRetries; i++) {
         try {
             return await fn();
         } catch (err: any) {
             lastError = err;
-            const errStr = typeof err === 'string' ? err : (err.message || JSON.stringify(err));
-            const isTransient = errStr.includes("503") || 
-                               errStr.includes("high demand") || 
-                               errStr.includes("UNAVAILABLE") ||
-                               errStr.includes("Service Unavailable") ||
-                               errStr.includes("Deadline Exceeded");
+            const isTransient = err.message?.includes("503") || 
+                               err.message?.includes("high demand") || 
+                               err.message?.includes("UNAVAILABLE");
             
             if (isTransient && i < maxRetries - 1) {
-                const delay = Math.pow(2, i) * 2000 + Math.random() * 1000;
-                console.warn(`Gemini API busy or unavailable. Retrying in ${Math.round(delay)}ms... (Attempt ${i + 1}/${maxRetries})`);
+                const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
+                console.warn(`Gemini API busy (503). Retrying in ${Math.round(delay)}ms... (Attempt ${i + 1}/${maxRetries})`);
                 await new Promise(resolve => setTimeout(resolve, delay));
                 continue;
             }
