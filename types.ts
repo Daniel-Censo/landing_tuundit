@@ -38,6 +38,14 @@ export interface ProductDetails {
   images?: string[]; // Array of images
   featureCount?: number; // Number of paragraphs/features to generate
   selectedImageStyles?: AIImageStyle[]; // NEW: Preferred styles for AI image generation
+  paragraphLength?: 'medium' | 'abundant'; // NEW
+}
+
+export interface ProductVariant {
+  id: string;
+  label: string;
+  price?: string; // Optional price override for this variant
+  image?: string; // Optional image for this variant
 }
 
 export interface FormFieldConfig {
@@ -308,6 +316,15 @@ export interface GeneratedContent {
   };
 
   customFooterCopyrightText?: string; // NEW: Custom footer text
+
+  // NEW: Product Variants
+  variants?: {
+    enabled: boolean;
+    showOnPage?: boolean; // NEW: Show variants outside the form too
+    title: string; // e.g., "Scegli la tua variante:"
+    options: ProductVariant[];
+    defaultId?: string;
+  };
 }
 
 export interface LandingPageRow {

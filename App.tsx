@@ -1249,6 +1249,20 @@ export const App: React.FC = () => {
                                             <input type="number" min="0" max="6" value={aiImageCount} onChange={e => setAiImageCount(parseInt(e.target.value) || 0)} className="w-full border border-slate-200 rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-emerald-500 outline-none transition-all text-center" />
                                         </div>
                                     </div>
+                                    <div className="grid grid-cols-2 gap-2 mt-2">
+                                        <button 
+                                            onClick={() => setProduct({...product, paragraphLength: 'medium'})} 
+                                            className={`p-2 rounded-xl border text-center transition-all ${product.paragraphLength === 'medium' ? 'bg-slate-900 border-slate-900 text-white shadow-md' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'}`}
+                                        >
+                                            <span className="text-[9px] font-bold uppercase">Testo Medio (30+ parole)</span>
+                                        </button>
+                                        <button 
+                                            onClick={() => setProduct({...product, paragraphLength: 'abundant'})} 
+                                            className={`p-2 rounded-xl border text-center transition-all ${product.paragraphLength === 'abundant' || !product.paragraphLength ? 'bg-slate-900 border-slate-900 text-white shadow-md' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'}`}
+                                        >
+                                            <span className="text-[9px] font-bold uppercase">Testo Abbondante (50+ parole)</span>
+                                        </button>
+                                    </div>
                                 </div>
                                 
                                 <div className="space-y-3 p-3 bg-slate-50 rounded-2xl border border-slate-100">
@@ -2067,11 +2081,31 @@ export const App: React.FC = () => {
                                                         newFeatures[i] = { ...f, title: e.target.value };
                                                         updateContent({ features: newFeatures });
                                                     }} className="w-full border border-slate-200 rounded-lg p-2 text-xs" />
-                                                    <textarea placeholder="Descrizione" value={f.description} onChange={e => {
-                                                        const newFeatures = [...generatedContent.features];
-                                                        newFeatures[i] = { ...f, description: e.target.value };
-                                                        updateContent({ features: newFeatures });
-                                                    }} className="w-full border border-slate-200 rounded-lg p-2 text-xs h-20" />
+                                                    <div className="relative">
+                                                        <textarea placeholder="Descrizione" value={f.description} id={`feature-desc-${i}`} onChange={e => {
+                                                            const newFeatures = [...generatedContent.features];
+                                                            newFeatures[i] = { ...f, description: e.target.value };
+                                                            updateContent({ features: newFeatures });
+                                                        }} className="w-full border border-slate-200 rounded-lg p-2 text-xs h-32" />
+                                                        <button 
+                                                            onClick={() => {
+                                                                const textarea = document.getElementById(`feature-desc-${i}`) as HTMLTextAreaElement;
+                                                                if (!textarea) return;
+                                                                const start = textarea.selectionStart;
+                                                                const end = textarea.selectionEnd;
+                                                                const text = textarea.value;
+                                                                const selectedText = text.substring(start, end);
+                                                                if (!selectedText) return;
+                                                                const newText = text.substring(0, start) + `<b>${selectedText}</b>` + text.substring(end);
+                                                                const newFeatures = [...generatedContent.features];
+                                                                newFeatures[i] = { ...f, description: newText };
+                                                                updateContent({ features: newFeatures });
+                                                            }}
+                                                            className="absolute bottom-2 right-2 bg-white border border-slate-200 rounded px-2 py-1 text-[10px] font-bold hover:bg-slate-50 shadow-sm"
+                                                        >
+                                                            B
+                                                        </button>
+                                                    </div>
                                                     
                                                     <div className="pt-2 space-y-3">
                                                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Immagini Feature</label>
@@ -2222,7 +2256,102 @@ export const App: React.FC = () => {
                                         </div>
                                     </EditorSection>
 
-                                    <EditorSection title="Recensioni" num="12" icon={<MessageSquare className="w-4 h-4"/>}>
+                                    <EditorSection title="Varianti Prodotto" num="12" icon={<ListOrdered className="w-4 h-4"/>}>
+                                        <div className="space-y-4">
+                                            <div className="flex items-center justify-between">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Attiva Varianti</label>
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={generatedContent.variants?.enabled} 
+                                                    onChange={e => updateContent({ 
+                                                        variants: { 
+                                                            ...(generatedContent.variants || { enabled: false, title: "Scegli la tua variante:", options: [] }), 
+                                                            enabled: e.target.checked 
+                                                        } 
+                                                    })} 
+                                                    className="w-4 h-4 accent-emerald-500" 
+                                                />
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Mostra nella Landing Page</label>
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={generatedContent.variants?.showOnPage} 
+                                                    onChange={e => updateContent({ 
+                                                        variants: { 
+                                                            ...(generatedContent.variants || { enabled: false, title: "Scegli la tua variante:", options: [] }), 
+                                                            showOnPage: e.target.checked 
+                                                        } 
+                                                    })} 
+                                                    className="w-4 h-4 accent-blue-500" 
+                                                />
+                                            </div>
+                                            {generatedContent.variants?.enabled && (
+                                                <div className="space-y-4 animate-in fade-in">
+                                                    <div>
+                                                        <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Titolo Sezione</label>
+                                                        <input 
+                                                            type="text" 
+                                                            value={generatedContent.variants.title} 
+                                                            onChange={e => updateContent({ variants: { ...generatedContent.variants!, title: e.target.value } })} 
+                                                            className="w-full border border-slate-200 rounded-lg p-2 text-xs" 
+                                                            placeholder="Esempio: Scegli il tuo modello:"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-3">
+                                                        <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Opzioni Varianti</label>
+                                                        {generatedContent.variants.options.map((option, i) => (
+                                                            <div key={i} className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                                                                <div className="flex justify-between items-center">
+                                                                    <span className="text-[9px] font-black text-slate-400">VARIANTE #{i+1}</span>
+                                                                    <button onClick={() => {
+                                                                        const newOptions = generatedContent.variants!.options.filter((_, idx) => idx !== i);
+                                                                        updateContent({ variants: { ...generatedContent.variants!, options: newOptions } });
+                                                                    }} className="text-red-500"><Trash2 className="w-3.5 h-3.5"/></button>
+                                                                </div>
+                                                                <div className="grid grid-cols-2 gap-2">
+                                                                    <div>
+                                                                        <label className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Nome</label>
+                                                                        <input 
+                                                                            type="text" 
+                                                                            value={option.label} 
+                                                                            onChange={e => {
+                                                                                const newOptions = [...generatedContent.variants!.options];
+                                                                                newOptions[i] = { ...option, label: e.target.value };
+                                                                                updateContent({ variants: { ...generatedContent.variants!, options: newOptions } });
+                                                                            }} 
+                                                                            className="w-full border border-slate-200 rounded-lg p-1.5 text-[10px]" 
+                                                                            placeholder="Esempio: Rosso / Taglia L"
+                                                                        />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Prezzo (Opzionale)</label>
+                                                                        <input 
+                                                                            type="text" 
+                                                                            value={option.price || ''} 
+                                                                            onChange={e => {
+                                                                                const newOptions = [...generatedContent.variants!.options];
+                                                                                newOptions[i] = { ...option, price: e.target.value };
+                                                                                updateContent({ variants: { ...generatedContent.variants!, options: newOptions } });
+                                                                            }} 
+                                                                            className="w-full border border-slate-200 rounded-lg p-1.5 text-[10px]" 
+                                                                            placeholder="Esempio: 59.00"
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                        <button onClick={() => {
+                                                            const newOptions = [...(generatedContent.variants?.options || []), { id: Math.random().toString(36).substr(2, 9), label: 'Nuova Variante' }];
+                                                            updateContent({ variants: { ...generatedContent.variants!, options: newOptions } });
+                                                        }} className="w-full py-2 border border-dashed border-slate-300 rounded-lg text-slate-400 text-[10px] font-bold hover:bg-slate-50 flex items-center justify-center gap-1 transition-all"><Plus className="w-3 h-3"/> Aggiungi Variante</button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </EditorSection>
+
+                                    <EditorSection title="Recensioni" num="13" icon={<MessageSquare className="w-4 h-4"/>}>
                                         <div className="space-y-4">
                                             {(generatedContent.testimonials || []).map((t, i) => (
                                                 <div key={i} className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
@@ -2290,7 +2419,7 @@ export const App: React.FC = () => {
                                         </div>
                                     </EditorSection>
 
-                                    <EditorSection title="Form Contatti" num="13" icon={<Mail className="w-4 h-4"/>}>
+                                    <EditorSection title="Form Contatti" num="14" icon={<Mail className="w-4 h-4"/>}>
                                         <div className="space-y-6">
                                             <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
                                                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Colore Pulsante Ordine (Checkout)</label>
@@ -2380,7 +2509,7 @@ export const App: React.FC = () => {
                                         </div>
                                     </EditorSection>
 
-                                    <EditorSection title="Stile & Colori" num="14" icon={<Palette className="w-4 h-4"/>}>
+                                    <EditorSection title="Stile & Colori" num="15" icon={<Palette className="w-4 h-4"/>}>
                                         <div className="space-y-4">
                                             <div>
                                                 <label className="block text-[10px] font-bold text-slate-500 mb-2 uppercase">Sfondo Pagina (Solido o Gradiente)</label>
@@ -2430,7 +2559,7 @@ export const App: React.FC = () => {
                                         </div>
                                     </EditorSection>
 
-                                    <EditorSection title="Tipografia" num="15" icon={<Type className="w-4 h-4"/>}>
+                                    <EditorSection title="Tipografia" num="16" icon={<Type className="w-4 h-4"/>}>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
                                                 <label className="block text-[10px] font-bold text-slate-500 mb-1">Dimensione H1 (PX)</label>
@@ -2451,7 +2580,7 @@ export const App: React.FC = () => {
                                         </div>
                                     </EditorSection>
 
-                                    <EditorSection title="Avanzato" num="16" icon={<Code className="w-4 h-4"/>}>
+                                    <EditorSection title="Avanzato" num="17" icon={<Code className="w-4 h-4"/>}>
                                         <div className="space-y-4">
                                             <div>
                                                 <label className="block text-[10px] font-bold text-slate-500 mb-1">Webhook URL (Make.com)</label>
@@ -2546,7 +2675,7 @@ export const App: React.FC = () => {
                                 </button>
                                 {editingPageId && (
                                     <button onClick={() => handleSaveToDb(true)} disabled={isSaving} className="w-full bg-white border border-emerald-600 text-emerald-600 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-50 transition-all disabled:opacity-50">
-                                        <copyPlus className="w-4 h-4" /> Salva come Nuova Pagina
+                                        <CopyPlus className="w-4 h-4" /> Salva come Nuova Pagina
                                     </button>
                                 )}
                             </div>

@@ -256,6 +256,10 @@ export const generateLandingPage = async (product: ProductDetails, reviewCount: 
     const ai = getAIInstance();
     const langConfig = getLanguageConfig('Italiano');
     
+    const paragraphLengthPrompt = product.paragraphLength === 'medium' 
+        ? "Each paragraph (feature description) must be at least 30 words long."
+        : "Each paragraph (feature description) must be at least 50 words long.";
+
     const prompt = `
     Generate a high-converting landing page JSON for a product with the following details:
     Name: ${product.name}
@@ -269,11 +273,14 @@ export const generateLandingPage = async (product: ProductDetails, reviewCount: 
 
     Instructions:
     - All text content must be in Italiano.
+    - ${paragraphLengthPrompt}
+    - IMPORTANT: In the feature descriptions, identify the key points and format them in bold using HTML <b>tags</b> (e.g., <b>punto fondamentale</b>).
     - MANDATORY: DO NOT use generic slogans like "Miglior Scelta 2023" or "Prodotto scelto da migliaia".
     - Instead, focus on product-specific benefits and clear calls to action.
     - FORBIDDEN: Do not mention dates like "2023" or "2024" in marketing slogans.
     - Provide 10 real common Italian cities and 10 common Italian names for localizedCities and localizedNames.
     - IMPORTANT: Include a "boxContent" object with a title like "Cosa Trovi nella Confezione?" and an array of items (exactly what's in the box, e.g., "1x Prodotto", "Manuale d'istruzioni").
+    - IMPORTANT: Include a "variants" object. If the product naturally has variants (colors, sizes, models), enable it and provide 2-3 options. If not, set enabled to false.
     - IMPORTANT: Include a "bottomOffer" section for a special price block at the end of the page.
       - bottomOffer.title: Must be "${product.name} Oggi"
       - bottomOffer.subtitle: A persuasive short text.
@@ -325,6 +332,26 @@ export const generateLandingPage = async (product: ProductDetails, reviewCount: 
                             items: { type: Type.ARRAY, items: { type: Type.STRING } }
                         },
                         required: ["title", "items"]
+                    },
+                    variants: {
+                        type: Type.OBJECT,
+                        properties: {
+                            enabled: { type: Type.BOOLEAN },
+                            title: { type: Type.STRING },
+                            options: {
+                                type: Type.ARRAY,
+                                items: {
+                                    type: Type.OBJECT,
+                                    properties: {
+                                        id: { type: Type.STRING },
+                                        label: { type: Type.STRING },
+                                        price: { type: Type.STRING }
+                                    },
+                                    required: ["id", "label"]
+                                }
+                            }
+                        },
+                        required: ["enabled", "title", "options"]
                     },
                     bottomOffer: {
                         type: Type.OBJECT,
@@ -429,6 +456,12 @@ export const generateLandingPage = async (product: ProductDetails, reviewCount: 
             enabled: true,
             title: baseContent.boxContent?.title || "Cosa Trovi nella Confezione?",
             items: baseContent.boxContent?.items || []
+        },
+        variants: {
+            enabled: baseContent.variants?.enabled || false,
+            title: baseContent.variants?.title || "Scegli la tua variante:",
+            options: baseContent.variants?.options || [],
+            defaultId: baseContent.variants?.options?.[0]?.id
         },
         bottomOffer: {
             enabled: true,

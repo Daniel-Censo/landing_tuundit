@@ -24,6 +24,8 @@ interface TemplateProps {
     textClass?: string;
     styles: ReturnType<typeof getTypographyStyles>;
     siteConfig?: SiteConfig;
+    selectedVariant?: string;
+    setSelectedVariant?: (id: string) => void;
 }
 
 const TY_SUFFIXES: Record<string, string> = {
@@ -405,7 +407,16 @@ const DEFAULT_LABELS = {
     timelineDelivered: "Consegnato"
 };
 
-const OrderPopup: React.FC<{ isOpen: boolean; onClose: () => void; content: GeneratedContent; thankYouSlug?: string; onRedirect?: (data?: OrderData) => void; onPurchase?: (pageUrl: string) => void; }> = ({ isOpen, onClose, content, thankYouSlug, onRedirect, onPurchase }) => {
+const OrderPopup: React.FC<{ 
+    isOpen: boolean; 
+    onClose: () => void; 
+    content: GeneratedContent; 
+    thankYouSlug?: string; 
+    onRedirect?: (data?: OrderData) => void; 
+    onPurchase?: (pageUrl: string) => void; 
+    selectedVariant?: string;
+    setSelectedVariant?: (id: string) => void;
+}> = ({ isOpen, onClose, content, thankYouSlug, onRedirect, onPurchase, selectedVariant, setSelectedVariant }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [paymentMethod, setPaymentMethod] = useState<'cod' | 'card'>('cod');
     const [formData, setFormData] = useState<Record<string, string>>({});
@@ -488,7 +499,15 @@ const OrderPopup: React.FC<{ isOpen: boolean; onClose: () => void; content: Gene
     }
 
     const calculateTotal = () => {
-        let total = parsePrice(content.price);
+        let basePrice = content.price;
+        if (content.variants?.enabled && selectedVariant) {
+            const variant = content.variants.options.find(v => v.id === selectedVariant);
+            if (variant?.price) {
+                basePrice = variant.price;
+            }
+        }
+
+        let total = parsePrice(basePrice);
         if (content.enableShippingCost && content.shippingCost) {
             total += parsePrice(content.shippingCost);
         }
@@ -511,12 +530,15 @@ const OrderPopup: React.FC<{ isOpen: boolean; onClose: () => void; content: Gene
         const totalPrice = calculateTotal();
         const currentData = manualData || formData;
         
+        const selectedVariantObj = content.variants?.enabled ? content.variants.options.find(v => v.id === selectedVariant) : null;
+
         const currentName = currentData.name || currentData.nome || currentData.full_name || '';
         const currentPhone = currentData.phone || currentData.telefono || currentData.tel || '';
 
         const payloadData: Record<string, any> = {
             event_type: 'new_order',
             product_name: content.headline || 'Unknown Product',
+            variant: selectedVariantObj ? selectedVariantObj.label : 'N/A',
             price: `${price} ${currency}`,
             shipping_cost: content.enableShippingCost ? `${content.shippingCost} ${currency}` : `0 ${currency}`,
             total_price: `${totalPrice} ${currency}`,
@@ -738,6 +760,37 @@ const OrderPopup: React.FC<{ isOpen: boolean; onClose: () => void; content: Gene
                         />
                     ) : (
                         <form onSubmit={handleSubmit} className="space-y-5">
+
+                            {content.variants?.enabled && content.variants.options.length > 0 && (
+                                <div className="space-y-3 mb-6 animate-in fade-in slide-in-from-top-2">
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">{content.variants.title || 'Scegli la variante:'}</label>
+                                    <div className="grid grid-cols-1 gap-2">
+                                        {content.variants.options.map((option) => (
+                                            <label 
+                                                key={option.id} 
+                                                className={`flex items-center p-3 border rounded-xl cursor-pointer transition-all ${selectedVariant === option.id ? 'border-slate-900 bg-slate-50 ring-1 ring-slate-900' : 'border-slate-200 hover:border-slate-300'}`}
+                                            >
+                                                <input 
+                                                    type="radio" 
+                                                    name="variant" 
+                                                    value={option.id} 
+                                                    checked={selectedVariant === option.id} 
+                                                    onChange={() => setSelectedVariant?.(option.id)} 
+                                                    className="w-4 h-4 text-slate-900 accent-slate-900"
+                                                />
+                                                <div className="ml-3 flex-1 flex justify-between items-center">
+                                                    <span className="font-bold text-slate-900 text-sm">{option.label}</span>
+                                                    {option.price && (
+                                                        <span className="text-xs font-black text-slate-500">
+                                                            {labels.currencyPos === 'before' ? `${currency}${stripCurrency(option.price, currency)}` : `${stripCurrency(option.price, currency)}${currency}`}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
                             {content.insuranceConfig?.enabled && (
                                 <div className="bg-emerald-50 border-2 border-emerald-200/50 p-4 rounded-xl transition-all duration-300 hover:shadow-lg hover:border-emerald-300">
@@ -1041,7 +1094,7 @@ const BottomOfferSection: React.FC<{ content: GeneratedContent; onBuy: () => voi
     );
 };
 
-const GadgetTemplate: React.FC<TemplateProps> = ({ content, onBuy, styles, siteConfig }) => {
+const GadgetTemplate: React.FC<TemplateProps> = ({ content, onBuy, styles, siteConfig, selectedVariant, setSelectedVariant }) => {
     const reviews = content.testimonials && content.testimonials.length > 0 
         ? content.testimonials 
         : (content.testimonial ? [content.testimonial] : []);
@@ -1311,7 +1364,7 @@ const GadgetTemplate: React.FC<TemplateProps> = ({ content, onBuy, styles, siteC
                     </div>
                 )}
                 <h3 className="text-xl md:text-3xl font-bold text-slate-900 break-words" style={h3Style}>{f.title}</h3>
-                <p className="text-slate-600 leading-relaxed font-medium" style={bodyStyle}>{f.description}</p>
+                <div className="text-slate-600 leading-relaxed font-medium" style={bodyStyle} dangerouslySetInnerHTML={{ __html: f.description }} />
                 {f.showCta && (
                     <div className="mt-2">
                         <button 
@@ -1394,6 +1447,38 @@ const GadgetTemplate: React.FC<TemplateProps> = ({ content, onBuy, styles, siteC
                              <div className="bg-blue-100/50 text-blue-900 text-center text-sm font-bold py-2.5 rounded border border-blue-200/50 mb-4 flex items-center justify-center gap-2 w-full">
                                 <CheckCircle className="w-4 h-4 text-blue-600" /><span style={smallStyle}>{content.ctaSubtext}</span>
                              </div>
+
+                             {content.variants?.enabled && content.variants.showOnPage && (
+                                <div className="mb-6 animate-in fade-in slide-in-from-top-2">
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">{content.variants.title}</label>
+                                    <div className="grid grid-cols-1 gap-2">
+                                        {content.variants.options.map((variant) => (
+                                            <label 
+                                                key={variant.id} 
+                                                className={`flex items-center justify-between p-3 border rounded-xl cursor-pointer transition-all ${selectedVariant === variant.id ? 'border-blue-600 bg-blue-50 ring-1 ring-blue-600' : 'border-slate-200 hover:border-slate-300 bg-white'}`}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <input 
+                                                        type="radio" 
+                                                        name="page_variant" 
+                                                        value={variant.id} 
+                                                        checked={selectedVariant === variant.id} 
+                                                        onChange={() => setSelectedVariant?.(variant.id)} 
+                                                        className="w-4 h-4 text-blue-600 accent-blue-600"
+                                                    />
+                                                    <span className="font-bold text-slate-900 text-sm">{variant.label}</span>
+                                                </div>
+                                                {variant.price && (
+                                                    <span className="font-black text-blue-700 text-sm">
+                                                        {labels.currencyPos === 'before' ? `${currency}${stripCurrency(variant.price, currency)}` : `${stripCurrency(variant.price, currency)}${currency}`}
+                                                    </span>
+                                                )}
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                             )}
+
                              <div className="space-y-2 mb-5 px-1 w-full">
                                 {content.benefits.slice(0, 4).map((b, i) => (
                                     <div key={i} className="flex items-start gap-2.5">
@@ -1533,6 +1618,7 @@ const GadgetTemplate: React.FC<TemplateProps> = ({ content, onBuy, styles, siteC
 
 const LandingPage: React.FC<LandingPageProps> = ({ content, thankYouSlug, onRedirect, onPurchase, siteConfig }) => {
     const [isOrderOpen, setIsOrderOpen] = useState(false);
+    const [selectedVariant, setSelectedVariant] = useState<string | undefined>(content.variants?.defaultId);
     const styles = getTypographyStyles(content.typography);
 
     useEffect(() => {
@@ -1550,8 +1636,24 @@ const LandingPage: React.FC<LandingPageProps> = ({ content, thankYouSlug, onRedi
 
     return (
         <>
-            <GadgetTemplate content={content} onBuy={handleOpenOrder} styles={styles} siteConfig={siteConfig} />
-            <OrderPopup isOpen={isOrderOpen} onClose={() => setIsOrderOpen(false)} content={content} thankYouSlug={thankYouSlug} onRedirect={onRedirect} onPurchase={onPurchase} />
+            <GadgetTemplate 
+                content={content} 
+                onBuy={handleOpenOrder} 
+                styles={styles} 
+                siteConfig={siteConfig} 
+                selectedVariant={selectedVariant}
+                setSelectedVariant={setSelectedVariant}
+            />
+            <OrderPopup 
+                isOpen={isOrderOpen} 
+                onClose={() => setIsOrderOpen(false)} 
+                content={content} 
+                thankYouSlug={thankYouSlug} 
+                onRedirect={onRedirect} 
+                onPurchase={onPurchase} 
+                selectedVariant={selectedVariant}
+                setSelectedVariant={setSelectedVariant}
+            />
         </>
     );
 };
