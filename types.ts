@@ -46,6 +46,7 @@ export interface ProductVariant {
   label: string;
   price?: string; // Optional price override for this variant
   image?: string; // Optional image for this variant
+  isMostPopular?: boolean; // NEW: Mark as "Most Popular"
 }
 
 export interface FormFieldConfig {
@@ -321,6 +322,7 @@ export interface GeneratedContent {
   variants?: {
     enabled: boolean;
     showOnPage?: boolean; // NEW: Show variants outside the form too
+    required?: boolean; // NEW: Make selection mandatory
     title: string; // e.g., "Scegli la tua variante:"
     options: ProductVariant[];
     defaultId?: string;

@@ -1102,7 +1102,22 @@ export const App: React.FC = () => {
   }
 
   if (view === 'product_view' && selectedPublicPage) {
-      return <LandingPage content={selectedPublicPage.content} thankYouSlug={selectedPublicPage.thank_you_slug} onPurchase={handlePurchase} onRedirect={(data) => { setOrderData(data); setView('thank_you_view'); }} siteConfig={siteConfig} />;
+      return <LandingPage 
+        content={selectedPublicPage.content} 
+        thankYouSlug={selectedPublicPage.thank_you_slug} 
+        onPurchase={handlePurchase} 
+        onRedirect={(data) => { setOrderData(data); setView('thank_you_view'); }} 
+        siteConfig={siteConfig} 
+        onGoHome={() => {
+            if (session) {
+                setView('admin');
+                safePushState('/');
+            } else {
+                setView('home');
+                safePushState('/');
+            }
+        }}
+      />;
   }
 
   if (view === 'thank_you_view' && selectedPublicPage) {
@@ -1550,11 +1565,11 @@ export const App: React.FC = () => {
                                         <div className="grid grid-cols-2 gap-3 mb-4">
                                             <div>
                                                 <label className="block text-[10px] font-bold text-slate-500 mb-1">Prezzo</label>
-                                                <input type="text" value={generatedContent.price} onChange={e => updateContent({ price: e.target.value })} className="w-full border border-slate-200 rounded-lg p-2 text-xs" />
+                                                <input type="text" value={generatedContent.price || ''} onChange={e => updateContent({ price: e.target.value })} className="w-full border border-slate-200 rounded-lg p-2 text-xs" />
                                             </div>
                                             <div>
                                                 <label className="block text-[10px] font-bold text-slate-500 mb-1">Prezzo Originale</label>
-                                                <input type="text" value={generatedContent.originalPrice} onChange={e => updateContent({ originalPrice: e.target.value })} className="w-full border border-slate-200 rounded-lg p-2 text-xs" />
+                                                <input type="text" value={generatedContent.originalPrice || ''} onChange={e => updateContent({ originalPrice: e.target.value })} className="w-full border border-slate-200 rounded-lg p-2 text-xs" />
                                             </div>
                                         </div>
 
@@ -1722,10 +1737,17 @@ export const App: React.FC = () => {
                                             </div>
                                             {generatedContent.insuranceConfig?.enabled && (
                                                 <div className="grid grid-cols-2 gap-2">
-                                                    <input type="text" value={generatedContent.insuranceConfig.label} onChange={e => updateContent({ insuranceConfig: { ...generatedContent.insuranceConfig!, label: e.target.value } })} className="col-span-2 border border-emerald-200 rounded-lg p-2 text-xs" placeholder="Etichetta" />
+                                                    <div className="col-span-2 space-y-1">
+                                                        <label className="text-[9px] font-bold text-emerald-700 uppercase">Titolo</label>
+                                                        <input type="text" value={generatedContent.insuranceConfig.label || ''} onChange={e => updateContent({ insuranceConfig: { ...generatedContent.insuranceConfig!, label: e.target.value } })} className="w-full border border-emerald-200 rounded-lg p-2 text-xs" placeholder="Etichetta" />
+                                                    </div>
+                                                    <div className="col-span-2 space-y-1">
+                                                        <label className="text-[9px] font-bold text-emerald-700 uppercase">Descrizione</label>
+                                                        <input type="text" value={generatedContent.uiTranslation?.shippingInsuranceDescription || ''} onChange={e => updateContent({ uiTranslation: { ...generatedContent.uiTranslation!, shippingInsuranceDescription: e.target.value } })} className="w-full border border-emerald-200 rounded-lg p-2 text-xs" placeholder="Descrizione" />
+                                                    </div>
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-[10px] text-emerald-600">Costo:</span>
-                                                        <input type="text" value={generatedContent.insuranceConfig.cost} onChange={e => updateContent({ insuranceConfig: { ...generatedContent.insuranceConfig!, cost: e.target.value } })} className="flex-1 border border-emerald-200 rounded-lg p-2 text-xs" />
+                                                        <input type="text" value={generatedContent.insuranceConfig.cost || ''} onChange={e => updateContent({ insuranceConfig: { ...generatedContent.insuranceConfig!, cost: e.target.value } })} className="flex-1 border border-emerald-200 rounded-lg p-2 text-xs" />
                                                     </div>
                                                     <label className="flex items-center justify-end gap-2 cursor-pointer">
                                                         <input type="checkbox" checked={generatedContent.insuranceConfig.defaultChecked} onChange={e => updateContent({ insuranceConfig: { ...generatedContent.insuranceConfig!, defaultChecked: e.target.checked } })} className="w-3.5 h-3.5 accent-emerald-600" />
@@ -1745,10 +1767,17 @@ export const App: React.FC = () => {
                                             </div>
                                             {generatedContent.gadgetConfig?.enabled && (
                                                 <div className="grid grid-cols-2 gap-2">
-                                                    <input type="text" value={generatedContent.gadgetConfig.label} onChange={e => updateContent({ gadgetConfig: { ...generatedContent.gadgetConfig!, label: e.target.value } })} className="col-span-2 border border-purple-200 rounded-lg p-2 text-xs" placeholder="Etichetta" />
+                                                    <div className="col-span-2 space-y-1">
+                                                        <label className="text-[9px] font-bold text-purple-700 uppercase">Titolo</label>
+                                                        <input type="text" value={generatedContent.gadgetConfig.label || ''} onChange={e => updateContent({ gadgetConfig: { ...generatedContent.gadgetConfig!, label: e.target.value } })} className="w-full border border-purple-200 rounded-lg p-2 text-xs" placeholder="Etichetta" />
+                                                    </div>
+                                                    <div className="col-span-2 space-y-1">
+                                                        <label className="text-[9px] font-bold text-purple-700 uppercase">Descrizione</label>
+                                                        <input type="text" value={generatedContent.uiTranslation?.gadgetDescription || ''} onChange={e => updateContent({ uiTranslation: { ...generatedContent.uiTranslation!, gadgetDescription: e.target.value } })} className="w-full border border-purple-200 rounded-lg p-2 text-xs" placeholder="Descrizione" />
+                                                    </div>
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-[10px] text-purple-600">Costo:</span>
-                                                        <input type="text" value={generatedContent.gadgetConfig.cost} onChange={e => updateContent({ gadgetConfig: { ...generatedContent.gadgetConfig!, cost: e.target.value } })} className="flex-1 border border-emerald-200 rounded-lg p-2 text-xs" />
+                                                        <input type="text" value={generatedContent.gadgetConfig.cost || ''} onChange={e => updateContent({ gadgetConfig: { ...generatedContent.gadgetConfig!, cost: e.target.value } })} className="flex-1 border border-emerald-200 rounded-lg p-2 text-xs" />
                                                     </div>
                                                     <label className="flex items-center justify-end gap-2 cursor-pointer">
                                                         <input type="checkbox" checked={generatedContent.gadgetConfig.defaultChecked} onChange={e => updateContent({ gadgetConfig: { ...generatedContent.gadgetConfig!, defaultChecked: e.target.checked } })} className="w-3.5 h-3.5 accent-purple-600" />
@@ -1958,19 +1987,19 @@ export const App: React.FC = () => {
                                     <EditorSection title="Testo & Contenuto" num="7" icon={<FileTextIcon className="w-4 h-4"/>}>
                                         <div>
                                             <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Headline H1</label>
-                                            <textarea value={generatedContent.headline} onChange={e => updateContent({ headline: e.target.value })} className="w-full border border-slate-200 rounded-lg p-3 text-xs h-20 outline-none" />
+                                            <textarea value={generatedContent.headline || ''} onChange={e => updateContent({ headline: e.target.value })} className="w-full border border-slate-200 rounded-lg p-3 text-xs h-20 outline-none" />
                                         </div>
                                         <div>
                                             <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Subheadline H2</label>
-                                            <textarea value={generatedContent.subheadline} onChange={e => updateContent({ subheadline: e.target.value })} className="w-full border border-slate-200 rounded-lg p-3 text-xs h-20 outline-none" />
+                                            <textarea value={generatedContent.subheadline || ''} onChange={e => updateContent({ subheadline: e.target.value })} className="w-full border border-slate-200 rounded-lg p-3 text-xs h-20 outline-none" />
                                         </div>
                                         <div>
                                             <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Testo CTA Principale</label>
-                                            <input type="text" value={generatedContent.ctaText} onChange={e => updateContent({ ctaText: e.target.value })} className="w-full border border-slate-200 rounded-lg p-2 text-xs" />
+                                            <input type="text" value={generatedContent.ctaText || ''} onChange={e => updateContent({ ctaText: e.target.value })} className="w-full border border-slate-200 rounded-lg p-2 text-xs" />
                                         </div>
                                         <div>
                                             <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Sottotitolo CTA</label>
-                                            <input type="text" value={generatedContent.ctaSubtext} onChange={e => updateContent({ ctaSubtext: e.target.value })} className="w-full border border-slate-200 rounded-lg p-2 text-xs" />
+                                            <input type="text" value={generatedContent.ctaSubtext || ''} onChange={e => updateContent({ ctaSubtext: e.target.value })} className="w-full border border-slate-200 rounded-lg p-2 text-xs" />
                                         </div>
                                     </EditorSection>
 
@@ -2286,13 +2315,27 @@ export const App: React.FC = () => {
                                                     className="w-4 h-4 accent-blue-500" 
                                                 />
                                             </div>
+                                            <div className="flex items-center justify-between">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Obbligatorio</label>
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={generatedContent.variants?.required} 
+                                                    onChange={e => updateContent({ 
+                                                        variants: { 
+                                                            ...(generatedContent.variants || { enabled: false, title: "Scegli la tua variante:", options: [] }), 
+                                                            required: e.target.checked 
+                                                        } 
+                                                    })} 
+                                                    className="w-4 h-4 accent-red-500" 
+                                                />
+                                            </div>
                                             {generatedContent.variants?.enabled && (
                                                 <div className="space-y-4 animate-in fade-in">
                                                     <div>
                                                         <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Titolo Sezione</label>
                                                         <input 
                                                             type="text" 
-                                                            value={generatedContent.variants.title} 
+                                                            value={generatedContent.variants.title || ''} 
                                                             onChange={e => updateContent({ variants: { ...generatedContent.variants!, title: e.target.value } })} 
                                                             className="w-full border border-slate-200 rounded-lg p-2 text-xs" 
                                                             placeholder="Esempio: Scegli il tuo modello:"
@@ -2314,7 +2357,7 @@ export const App: React.FC = () => {
                                                                         <label className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Nome</label>
                                                                         <input 
                                                                             type="text" 
-                                                                            value={option.label} 
+                                                                            value={option.label || ''} 
                                                                             onChange={e => {
                                                                                 const newOptions = [...generatedContent.variants!.options];
                                                                                 newOptions[i] = { ...option, label: e.target.value };
@@ -2338,6 +2381,33 @@ export const App: React.FC = () => {
                                                                             placeholder="Esempio: 59.00"
                                                                         />
                                                                     </div>
+                                                                </div>
+                                                                <div className="flex items-center gap-4 pt-1">
+                                                                    <label className="flex items-center gap-1.5 cursor-pointer group">
+                                                                        <input 
+                                                                            type="checkbox" 
+                                                                            checked={!!option.isMostPopular} 
+                                                                            onChange={e => {
+                                                                                const newOptions = [...generatedContent.variants!.options];
+                                                                                newOptions[i] = { ...option, isMostPopular: e.target.checked };
+                                                                                updateContent({ variants: { ...generatedContent.variants!, options: newOptions } });
+                                                                            }}
+                                                                            className="w-3 h-3 accent-blue-600"
+                                                                        />
+                                                                        <span className="text-[9px] font-bold text-slate-500 group-hover:text-blue-600 transition-colors uppercase tracking-tighter">La più scelta</span>
+                                                                    </label>
+                                                                    <label className="flex items-center gap-1.5 cursor-pointer group">
+                                                                        <input 
+                                                                            type="radio" 
+                                                                            name="default_variant_selector"
+                                                                            checked={generatedContent.variants?.defaultId === option.id} 
+                                                                            onChange={() => {
+                                                                                updateContent({ variants: { ...generatedContent.variants!, defaultId: option.id } });
+                                                                            }}
+                                                                            className="w-3 h-3 accent-emerald-600"
+                                                                        />
+                                                                        <span className="text-[9px] font-bold text-slate-500 group-hover:text-emerald-600 transition-colors uppercase tracking-tighter">Predefinita</span>
+                                                                    </label>
                                                                 </div>
                                                             </div>
                                                         ))}
@@ -2705,7 +2775,24 @@ export const App: React.FC = () => {
                                 </div>
                              </div>
                              <div className="bg-white h-[80vh] overflow-y-auto custom-scrollbar-preview">
-                                {previewMode === 'landing' ? <LandingPage content={generatedContent} siteConfig={siteConfig} /> : <ThankYouPage content={generatedThankYouContent!} />}
+                                {previewMode === 'landing' ? (
+                                    <LandingPage 
+                                        content={generatedContent} 
+                                        siteConfig={siteConfig} 
+                                        onUpdateContent={(content) => setGeneratedContent(content)} 
+                                        onGoHome={() => {
+                                            if (session) {
+                                                setView('admin');
+                                                safePushState('/');
+                                            } else {
+                                                setView('home');
+                                                safePushState('/');
+                                            }
+                                        }}
+                                    />
+                                ) : (
+                                    <ThankYouPage content={generatedThankYouContent!} />
+                                )}
                              </div>
                         </div>
                     )}
