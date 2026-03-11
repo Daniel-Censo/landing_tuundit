@@ -326,6 +326,8 @@ export const generateLandingPage = async (product: ProductDetails, reviewCount: 
     - IMPORTANT: In uiTranslation, translate all form labels (nameLabel, phoneLabel, emailLabel, addressLabel, cityLabel, provinceLabel, capLabel, addressNumberLabel) into ${targetLang}.
     - IMPORTANT: In uiTranslation, include an "offer" field translated into ${targetLang} (e.g., "Offerta").
     - IMPORTANT: In uiTranslation, include an "assistantMessage" field translated into ${targetLang} (e.g., "Ciao! Compila il modulo, ci vorrà solo un minuto.").
+    - IMPORTANT: In uiTranslation, include a "thankYouTitle" field translated into ${targetLang} (e.g., "Grazie per il tuo acquisto {name}!"). Use "{name}" as the placeholder.
+    - IMPORTANT: In uiTranslation, include a "thankYouMsg" field translated into ${targetLang} (e.g., "Il tuo ordine è stato ricevuto. Un nostro consulente ti contatterà a breve al numero {phone}."). Use "{phone}" as the placeholder.
     - Follow the GeneratedContent interface structure strictly.`;
 
     const response = await callGeminiWithRetry(() => ai.models.generateContent({
@@ -564,6 +566,7 @@ export const translateLandingPage = async (content: GeneratedContent, targetLang
         SOCIAL PROOF: Ensure the "socialProof" field in uiTranslation is translated as "and {x} other people have purchased" in ${targetLang}, keeping the "{x}" placeholder.
         SCARCITY: Translate the "onlyLeft" field in uiTranslation accurately into ${targetLang}, ensuring the "{x}" placeholder is preserved and refers to the number of items left.
         VERIFICATION: Ensure the "certified" field in uiTranslation is translated as "Acquisto verificato" in ${targetLang}.
+        THANK YOU PAGE: Ensure "thankYouTitle" preserves the "{name}" placeholder, and "thankYouMsg" preserves the "{phone}" placeholder. If "headline" contains "{name}", preserve it. If "subheadline" contains "{phone}", preserve it.
         
         MANDATORY: 
         - DO NOT skip any fields.
@@ -885,7 +888,10 @@ export const rewriteLandingPage = async (content: GeneratedContent, tone: PageTo
     };
 
     const targetLang = content.language || 'Italiano';
-    const prompt = `Rewrite the following landing page content to have a ${tone} tone in ${targetLang}: ${JSON.stringify(textFields)}`;
+    const prompt = `Rewrite the following landing page content to have a ${tone} tone in ${targetLang}: ${JSON.stringify(textFields)}
+    
+    IMPORTANT: If "headline" contains "{name}", preserve the "{name}" placeholder in the rewritten text.
+    IMPORTANT: If "subheadline" contains "{phone}", preserve the "{phone}" placeholder in the rewritten text.`;
 
     const response = await callGeminiWithRetry(() => ai.models.generateContent({
         model: 'gemini-3-flash-preview',
