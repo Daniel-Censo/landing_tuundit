@@ -28,6 +28,8 @@ interface TemplateProps {
     siteConfig?: SiteConfig;
     selectedVariant?: string;
     setSelectedVariant?: (id: string) => void;
+    selectedSubVariants?: Record<number, Record<string, string>>;
+    setSelectedSubVariants?: (val: Record<number, Record<string, string>>) => void;
     variantError?: boolean;
     onUpdateContent?: (newContent: GeneratedContent) => void;
     onGoHome?: () => void;
@@ -376,7 +378,7 @@ const DEFAULT_LABELS = {
     orderReceivedMsg: 'Ordine Ricevuto.',
     techDesign: 'Tecnologia & Design',
     discountLabel: '-50%',
-    certified: 'Acquisto Verificato',
+    certified: 'Acquisto verificato',
     currencyPos: 'before' as 'before' | 'after', 
     legalDisclaimer: 'Disclaimer...',
     privacyPolicy: 'Privacy Policy',
@@ -384,6 +386,7 @@ const DEFAULT_LABELS = {
     cookiePolicy: 'Cookie Policy',
     rightsReserved: 'Tutti i diritti riservati.',
     generatedPageNote: 'Pagina generata.',
+    assistantMessage: 'Ciao! Compila il modulo, ci vorrà solo un minuto.',
     cardErrorTitle: "Attenzione",
     cardErrorMsg: "Errore",
     switchToCod: "Cambia",
@@ -422,9 +425,11 @@ const OrderPopup: React.FC<{
     onPurchase?: (pageUrl: string) => void; 
     selectedVariant?: string;
     setSelectedVariant?: (id: string) => void;
+    selectedSubVariants?: Record<number, Record<string, string>>;
+    setSelectedSubVariants?: (val: Record<number, Record<string, string>>) => void;
     variantError?: boolean;
     setVariantError?: (val: boolean) => void;
-}> = ({ isOpen, onClose, content, thankYouSlug, onRedirect, onPurchase, selectedVariant, setSelectedVariant, variantError, setVariantError }) => {
+}> = ({ isOpen, onClose, content, thankYouSlug, onRedirect, onPurchase, selectedVariant, setSelectedVariant, selectedSubVariants, setSelectedSubVariants, variantError, setVariantError }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [paymentMethod, setPaymentMethod] = useState<'cod' | 'card'>('cod');
     const [formData, setFormData] = useState<Record<string, string>>({});
@@ -540,6 +545,14 @@ const OrderPopup: React.FC<{
         
         const selectedVariantObj = content.variants?.enabled ? content.variants.options.find(v => v.id === selectedVariant) : null;
 
+        const subVariantsText = selectedSubVariants ? Object.entries(selectedSubVariants).map(([itemIdx, variants]) => {
+            const variantDetails = Object.entries(variants).map(([typeId, value]) => {
+                const type = content.variants?.variantTypes?.find(t => t.id === typeId);
+                return `${type?.name || 'Variante'}: ${value}`;
+            }).join(', ');
+            return `Pezzo ${parseInt(itemIdx) + 1}: ${variantDetails}`;
+        }).join(' | ') : '';
+
         const currentName = currentData.name || currentData.nome || currentData.full_name || '';
         const currentPhone = currentData.phone || currentData.telefono || currentData.tel || '';
 
@@ -547,6 +560,7 @@ const OrderPopup: React.FC<{
             event_type: 'new_order',
             product_name: content.headline || 'Unknown Product',
             variant: selectedVariantObj ? selectedVariantObj.label : 'N/A',
+            sub_variants: subVariantsText,
             price: `${price} ${currency}`,
             shipping_cost: content.enableShippingCost ? `${content.shippingCost} ${currency}` : `0 ${currency}`,
             total_price: `${totalPrice} ${currency}`,
@@ -733,22 +747,24 @@ const OrderPopup: React.FC<{
                 </div>
                 <div className="p-6 overflow-y-auto custom-scrollbar">
                     {/* LIVE ASSISTANT SECTION */}
-                    <div className="flex items-center justify-end mb-6 gap-3 animate-in fade-in slide-in-from-right-4">
-                        <div className="bg-slate-900 text-white p-3.5 rounded-2xl rounded-tr-none text-xs font-bold shadow-xl max-w-[190px] relative border border-white/10 leading-tight">
-                            Ciao! Compila il modulo, ci vorrà solo un minuto.
-                            <div className="absolute top-0 -right-2 w-0 h-0 border-t-[10px] border-t-slate-900 border-r-[10px] border-r-transparent"></div>
+                    {content.showLiveAssistant !== false && (
+                        <div className="flex items-center justify-end mb-6 gap-3 animate-in fade-in slide-in-from-right-4">
+                            <div className="bg-slate-900 text-white p-3.5 rounded-2xl rounded-tr-none text-xs font-bold shadow-xl max-w-[190px] relative border border-white/10 leading-tight">
+                                {labels.assistantMessage}
+                                <div className="absolute top-0 -right-2 w-0 h-0 border-t-[10px] border-t-slate-900 border-r-[10px] border-r-transparent"></div>
+                            </div>
+                            <div className="w-16 h-16 rounded-full border-2 border-white shadow-2xl overflow-hidden shrink-0 bg-slate-100 ring-4 ring-slate-900/5">
+                                <video
+                                    src="https://www.cloudtalk.io/wp-content/uploads/2026/01/video-wave-hanka3.mp4"
+                                    autoPlay
+                                    loop
+                                    muted
+                                    playsInline
+                                    className="w-full h-full object-cover scale-110"
+                                />
+                            </div>
                         </div>
-                        <div className="w-16 h-16 rounded-full border-2 border-white shadow-2xl overflow-hidden shrink-0 bg-slate-100 ring-4 ring-slate-900/5">
-                            <video
-                                src="https://www.cloudtalk.io/wp-content/uploads/2026/01/video-wave-hanka3.mp4"
-                                autoPlay
-                                loop
-                                muted
-                                playsInline
-                                className="w-full h-full object-cover scale-110"
-                            />
-                        </div>
-                    </div>
+                    )}
 
                     {showHeader && (
                         <div className="flex items-start gap-4 mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100 animate-in fade-in">
@@ -820,6 +836,39 @@ const OrderPopup: React.FC<{
                                             </label>
                                         ))}
                                     </div>
+
+                                    {/* NEW: Sub-variant selectors for each item in the quantity */}
+                                    {selectedVariant && content.variants.variantTypes && content.variants.variantTypes.length > 0 && (
+                                        <div className="mt-4 space-y-4 border-t border-slate-100 pt-4">
+                                            {Array.from({ length: content.variants.options.find(o => o.id === selectedVariant)?.quantity || 1 }).map((_, itemIdx) => (
+                                                <div key={itemIdx} className="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-3">
+                                                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Opzioni Prodotto {itemIdx + 1}</div>
+                                                    <div className="grid grid-cols-2 gap-3">
+                                                        {content.variants!.variantTypes!.map((vt) => (
+                                                            <div key={vt.id} className="space-y-1">
+                                                                <label className="block text-[9px] font-bold text-slate-500 uppercase tracking-tight">{vt.name}</label>
+                                                                <select 
+                                                                    value={selectedSubVariants?.[itemIdx]?.[vt.id] || ''}
+                                                                    onChange={(e) => {
+                                                                        if (setSelectedSubVariants && selectedSubVariants) {
+                                                                            const newSub = { ...selectedSubVariants };
+                                                                            newSub[itemIdx] = { ...(newSub[itemIdx] || {}), [vt.id]: e.target.value };
+                                                                            setSelectedSubVariants(newSub);
+                                                                        }
+                                                                    }}
+                                                                    className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-medium outline-none focus:ring-1 focus:ring-slate-900"
+                                                                >
+                                                                    {vt.values.map(val => (
+                                                                        <option key={val} value={val}>{val}</option>
+                                                                    ))}
+                                                                </select>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
@@ -879,38 +928,40 @@ const OrderPopup: React.FC<{
                                 </div>
                             )}
 
-                            <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">{labels.paymentMethod}</label>
-                                <div className="space-y-2">
-                                    <label className={`flex items-center p-3 border rounded-xl cursor-pointer transition-all ${paymentMethod === 'cod' ? 'border-slate-900 bg-slate-50 ring-1 ring-slate-900' : 'border-slate-200 hover:border-slate-300'}`}>
-                                        <input type="radio" name="payment" value="cod" checked={paymentMethod === 'cod'} onChange={() => setPaymentMethod('cod')} className="w-4 h-4 text-slate-900 accent-slate-900"/>
-                                        <div className="ml-3 flex-1"><div className="flex items-center justify-between"><span className="font-bold text-slate-900 text-sm">{labels.cod}</span><Banknote className="w-5 h-5 text-slate-600" /></div></div>
-                                    </label>
-                                    <label className={`flex items-center p-3 border rounded-xl cursor-pointer transition-all ${paymentMethod === 'card' ? 'border-slate-900 bg-slate-50 ring-1 ring-slate-900' : 'border-slate-200 hover:border-slate-300'}`}>
-                                        <input type="radio" name="payment" value="card" checked={paymentMethod === 'card'} onChange={() => setPaymentMethod('card')} className="w-4 h-4 text-slate-900 accent-slate-900"/>
-                                        <div className="ml-3 flex-1">
-                                            <div className="flex items-center justify-between">
-                                                <span className="font-bold text-slate-900 text-sm">{labels.card}</span>
-                                                <div className="flex items-center gap-1">
-                                                    <img src="http://fadicon.com/wp-content/uploads/2025/12/20336392-visa-logo-vettore-visa-icona-gratuito-vettore-gratuito-vettoriale.jpg" alt="Visa" className="h-4" />
-                                                    <img src="http://fadicon.com/wp-content/uploads/2025/12/images-1.png" alt="Maestro" className="h-4" />
-                                                    <img src="http://fadicon.com/wp-content/uploads/2025/12/images.png" alt="American Express" className="h-4" />
-                                                    <img src="http://fadicon.com/wp-content/uploads/2025/12/MasterCard_Logo.svg.png" alt="Mastercard" className="h-4" />
+                            {content.showCardPayment !== false && (
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">{labels.paymentMethod}</label>
+                                    <div className="space-y-2">
+                                        <label className={`flex items-center p-3 border rounded-xl cursor-pointer transition-all ${paymentMethod === 'cod' ? 'border-slate-900 bg-slate-50 ring-1 ring-slate-900' : 'border-slate-200 hover:border-slate-300'}`}>
+                                            <input type="radio" name="payment" value="cod" checked={paymentMethod === 'cod'} onChange={() => setPaymentMethod('cod')} className="w-4 h-4 text-slate-900 accent-slate-900"/>
+                                            <div className="ml-3 flex-1"><div className="flex items-center justify-between"><span className="font-bold text-slate-900 text-sm">{labels.cod}</span><Banknote className="w-5 h-5 text-slate-600" /></div></div>
+                                        </label>
+                                        <label className={`flex items-center p-3 border rounded-xl cursor-pointer transition-all ${paymentMethod === 'card' ? 'border-slate-900 bg-slate-50 ring-1 ring-slate-900' : 'border-slate-200 hover:border-slate-300'}`}>
+                                            <input type="radio" name="payment" value="card" checked={paymentMethod === 'card'} onChange={() => setPaymentMethod('card')} className="w-4 h-4 text-slate-900 accent-slate-900"/>
+                                            <div className="ml-3 flex-1">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="font-bold text-slate-900 text-sm">{labels.card}</span>
+                                                    <div className="flex items-center gap-1">
+                                                        <img src="http://fadicon.com/wp-content/uploads/2025/12/20336392-visa-logo-vettore-visa-icona-gratuito-vettore-gratuito-vettoriale.jpg" alt="Visa" className="h-4" />
+                                                        <img src="http://fadicon.com/wp-content/uploads/2025/12/images-1.png" alt="Maestro" className="h-4" />
+                                                        <img src="http://fadicon.com/wp-content/uploads/2025/12/images.png" alt="American Express" className="h-4" />
+                                                        <img src="http://fadicon.com/wp-content/uploads/2025/12/MasterCard_Logo.svg.png" alt="Mastercard" className="h-4" />
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    </label>
-                                </div>
-                                {paymentMethod === 'card' && (
-                                    <div className="mt-3 p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-3 animate-in fade-in slide-in-from-top-2">
-                                        <input type="text" placeholder="0000 0000 0000 0000" className={inputClass} required value={cardData.number} onChange={handleCardNumberChange}/>
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <input type="text" placeholder="MM/YY" className={inputClass} required value={cardData.expiry} onChange={handleExpiryChange}/>
-                                            <input type="text" placeholder="CVC" className={inputClass} required value={cardData.cvc} onChange={handleCvcChange}/>
-                                        </div>
+                                        </label>
                                     </div>
-                                )}
-                            </div>
+                                    {paymentMethod === 'card' && (
+                                        <div className="mt-3 p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-3 animate-in fade-in slide-in-from-top-2">
+                                            <input type="text" placeholder="0000 0000 0000 0000" className={inputClass} required value={cardData.number} onChange={handleCardNumberChange}/>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <input type="text" placeholder="MM/YY" className={inputClass} required value={cardData.expiry} onChange={handleExpiryChange}/>
+                                                <input type="text" placeholder="CVC" className={inputClass} required value={cardData.cvc} onChange={handleCvcChange}/>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                             <div className="space-y-3">
                                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">{labels.shippingInfo}</label>
                                 <div className="grid grid-cols-12 gap-x-3 gap-y-4">
@@ -1103,8 +1154,8 @@ const BottomOfferSection: React.FC<{ content: GeneratedContent; onBuy: () => voi
                             <Truck className="w-6 h-6" />
                         </div>
                         <div>
-                            <p className="font-black text-sm uppercase tracking-wider">Spedizione Veloce</p>
-                            <p className="text-[11px] opacity-70">Consegna in 24/48 ore</p>
+                            <p className="font-black text-sm uppercase tracking-wider">{offer.features?.[0]?.title || "Spedizione Veloce"}</p>
+                            <p className="text-[11px] opacity-70">{offer.features?.[0]?.subtitle || "Consegna in 24/48 ore"}</p>
                         </div>
                     </div>
                     <div className="flex flex-col items-center gap-3">
@@ -1112,8 +1163,8 @@ const BottomOfferSection: React.FC<{ content: GeneratedContent; onBuy: () => voi
                             <ShieldCheck className="w-6 h-6" />
                         </div>
                         <div>
-                            <p className="font-black text-sm uppercase tracking-wider">Prova Senza Rischi</p>
-                            <p className="text-[11px] opacity-70">30 giorni soddisfatti o rimborsati</p>
+                            <p className="font-black text-sm uppercase tracking-wider">{offer.features?.[1]?.title || "Prova Senza Rischi"}</p>
+                            <p className="text-[11px] opacity-70">{offer.features?.[1]?.subtitle || "30 giorni soddisfatti o rimborsati"}</p>
                         </div>
                     </div>
                     <div className="flex flex-col items-center gap-3">
@@ -1121,8 +1172,8 @@ const BottomOfferSection: React.FC<{ content: GeneratedContent; onBuy: () => voi
                             <BadgeCheck className="w-6 h-6" />
                         </div>
                         <div>
-                            <p className="font-black text-sm uppercase tracking-wider">Garanzia 12 Mesi</p>
-                            <p className="text-[11px] opacity-70">Copertura completa inclusa</p>
+                            <p className="font-black text-sm uppercase tracking-wider">{offer.features?.[2]?.title || "Garanzia 12 Mesi"}</p>
+                            <p className="text-[11px] opacity-70">{offer.features?.[2]?.subtitle || "Copertura completa inclusa"}</p>
                         </div>
                     </div>
                 </div>
@@ -1131,12 +1182,19 @@ const BottomOfferSection: React.FC<{ content: GeneratedContent; onBuy: () => voi
     );
 };
 
-const GadgetTemplate: React.FC<TemplateProps> = ({ content, onBuy, styles, siteConfig, selectedVariant, setSelectedVariant, variantError, onUpdateContent, onGoHome }) => {
+const GadgetTemplate: React.FC<TemplateProps> = ({ content, onBuy, styles, siteConfig, selectedVariant, setSelectedVariant, selectedSubVariants, setSelectedSubVariants, variantError, onUpdateContent, onGoHome }) => {
     const reviews = content.testimonials && content.testimonials.length > 0 
         ? content.testimonials 
         : (content.testimonial ? [content.testimonial] : []);
     
     const [currentStock, setCurrentStock] = useState(content.stockConfig?.quantity || 13);
+    
+    useEffect(() => {
+        if (content.stockConfig?.quantity !== undefined) {
+            setCurrentStock(content.stockConfig.quantity);
+        }
+    }, [content.stockConfig?.quantity]);
+
     const [socialNotification, setSocialNotification] = useState<{visible: boolean, name: string, city: string} | null>(null);
     const spConfig = content.socialProofConfig || { enabled: true, intervalSeconds: 10, maxShows: 4 };
     
@@ -1526,6 +1584,37 @@ const GadgetTemplate: React.FC<TemplateProps> = ({ content, onBuy, styles, siteC
                                                     )}
                                                 </label>
 
+                                                {/* NEW: Sub-variant selectors on page */}
+                                                {selectedVariant === variant.id && content.variants.variantTypes && content.variants.variantTypes.length > 0 && (
+                                                    <div className="mt-2 ml-7 space-y-3 animate-in fade-in slide-in-from-top-1 pb-2">
+                                                        {Array.from({ length: variant.quantity || 1 }).map((_, itemIdx) => (
+                                                            <div key={itemIdx} className="bg-slate-50/50 p-2.5 rounded-lg border border-slate-100 space-y-2">
+                                                                <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Opzioni Pezzo {itemIdx + 1}</div>
+                                                                <div className="grid grid-cols-2 gap-2">
+                                                                    {content.variants!.variantTypes!.map((vt) => (
+                                                                        <div key={vt.id} className="space-y-1">
+                                                                            <label className="block text-[8px] font-bold text-slate-500 uppercase tracking-tight">{vt.name}</label>
+                                                                            <select 
+                                                                                value={selectedSubVariants?.[itemIdx]?.[vt.id] || ''}
+                                                                                onChange={(e) => {
+                                                                                    const newSub = { ...selectedSubVariants };
+                                                                                    newSub[itemIdx] = { ...(newSub[itemIdx] || {}), [vt.id]: e.target.value };
+                                                                                    setSelectedSubVariants(newSub);
+                                                                                }}
+                                                                                className="w-full bg-white border border-slate-200 rounded-md p-1.5 text-[10px] font-medium outline-none focus:ring-1 focus:ring-blue-500"
+                                                                            >
+                                                                                {vt.values.map(val => (
+                                                                                    <option key={val} value={val}>{val}</option>
+                                                                                ))}
+                                                                            </select>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+
                                                 {onUpdateContent && (
                                                     <div className="absolute -right-2 top-1/2 -translate-y-1/2 flex flex-col gap-1 opacity-0 group-hover/variant:opacity-100 transition-opacity z-20 translate-x-full pl-2">
                                                         <button 
@@ -1718,12 +1807,29 @@ const GadgetTemplate: React.FC<TemplateProps> = ({ content, onBuy, styles, siteC
 const LandingPage: React.FC<LandingPageProps> = ({ content, thankYouSlug, onRedirect, onPurchase, siteConfig, onUpdateContent, onGoHome }) => {
     const [isOrderOpen, setIsOrderOpen] = useState(false);
     const [selectedVariant, setSelectedVariant] = useState<string | undefined>(content.variants?.defaultId);
+    const [selectedSubVariants, setSelectedSubVariants] = useState<Record<number, Record<string, string>>>({});
     const [variantError, setVariantError] = useState(false);
     const styles = getTypographyStyles(content.typography);
 
     useEffect(() => {
-        if (selectedVariant) setVariantError(false);
-    }, [selectedVariant]);
+        if (selectedVariant) {
+            setVariantError(false);
+            // Initialize sub-variants if needed
+            const option = content.variants?.options.find(o => o.id === selectedVariant);
+            const qty = option?.quantity || 1;
+            const initialSub: Record<number, Record<string, string>> = {};
+            
+            for (let i = 0; i < qty; i++) {
+                initialSub[i] = {};
+                content.variants?.variantTypes?.forEach(vt => {
+                    if (vt.values.length > 0) {
+                        initialSub[i][vt.id] = vt.values[0];
+                    }
+                });
+            }
+            setSelectedSubVariants(initialSub);
+        }
+    }, [selectedVariant, content.variants?.variantTypes]);
 
     useEffect(() => {
         if (content.customHeadHtml) injectCustomScript(content.customHeadHtml);
@@ -1758,6 +1864,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ content, thankYouSlug, onRedi
                 siteConfig={siteConfig} 
                 selectedVariant={selectedVariant}
                 setSelectedVariant={setSelectedVariant}
+                selectedSubVariants={selectedSubVariants}
+                setSelectedSubVariants={setSelectedSubVariants}
                 variantError={variantError}
                 onUpdateContent={onUpdateContent}
                 onGoHome={onGoHome}
@@ -1771,6 +1879,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ content, thankYouSlug, onRedi
                 onPurchase={onPurchase} 
                 selectedVariant={selectedVariant}
                 setSelectedVariant={setSelectedVariant}
+                selectedSubVariants={selectedSubVariants}
+                setSelectedSubVariants={setSelectedSubVariants}
                 variantError={variantError}
                 setVariantError={setVariantError}
             />

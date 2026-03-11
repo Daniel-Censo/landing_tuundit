@@ -135,6 +135,7 @@ export const TIKTOK_SLIDER_HTML = `
 
 const COMMON_UI_DEFAULTS: Partial<UiTranslation> = {
     reviews: "Recensioni",
+    offer: "Offerta",
     cardErrorTitle: "Attenzione",
     cardErrorMsg: "Al momento non possiamo accettare pagamenti con carta. Scegli come procedere:",
     switchToCod: "Paga comodamente alla consegna",
@@ -148,7 +149,7 @@ const COMMON_UI_DEFAULTS: Partial<UiTranslation> = {
     checkoutHeader: "Checkout",
     completeOrder: "Completa l'Ordine",
     backToShop: "Torna allo Shop",
-    socialProof: "altre {x} persone hanno acquistato",
+    socialProof: "e altre {x} persone hanno acquistato.",
     shippingInsurance: "Assicurazione Spedizione",
     gadgetLabel: "Aggiungi Gadget",
     shippingInsuranceDescription: "Pacco protetto contro furto e smarrimento.",
@@ -166,15 +167,26 @@ const COMMON_UI_DEFAULTS: Partial<UiTranslation> = {
     original: "Originale",
     express: "Espresso",
     warranty: "Garanzia",
-    certified: "Acquisto Verificato",
+    certified: "Acquisto verificato",
     techDesign: "Tecnologia & Design",
+    secure: "Sicuro",
+    returns: "Resi",
+    orderReceived: "OK!",
+    orderReceivedMsg: "Ordine Ricevuto.",
+    discountLabel: "-50%",
+    privacyPolicy: "Privacy Policy",
+    termsConditions: "Termini & Condizioni",
+    cookiePolicy: "Cookie Policy",
+    rightsReserved: "Tutti i diritti riservati.",
+    generatedPageNote: "Pagina generata.",
+    assistantMessage: "Ciao! Compila il modulo, ci vorrà solo un minuto.",
     localizedCities: ["Roma", "Milano", "Napoli", "Torino", "Palermo", "Genova", "Bologna", "Firenze", "Bari", "Catania"],
     localizedNames: ["Alessandro", "Marco", "Giulia", "Luca", "Sofia", "Alessandro", "Francesca", "Matteo", "Chiara", "Lorenzo"],
     timelineOrdered: "Ordinato",
     timelineReady: "Ordine Pronto",
     timelineDelivered: "Consegnato",
-    thankYouTitle: "Grazie per il tuo acquisto {name}! ",
-    thankYouMsg: " Il tuo ordine è in fase di elaborazione. Verrai contattato telefonicamente o su whatsapp al numero {phone} per la conferma."
+    thankYouTitle: "Grazie per il tuo acquisto {name}!",
+    thankYouMsg: "Il tuo ordine è stato ricevuto. Un nostro consulente ti contatterà a breve al numero {phone}."
 };
 
 /**
@@ -197,8 +209,28 @@ const getAIInstance = () => {
 };
 
 export const getLanguageConfig = (lang: string) => {
-    const configs: Record<string, any> = {
-        'Italiano': { currency: '€', locale: 'it-IT', country: 'Italia' },
+    const configs: Record<string, { currency: string; locale: string; country: string; currencyPos: 'before' | 'after' }> = {
+        'Italiano': { currency: '€', locale: 'it-IT', country: 'Italia', currencyPos: 'before' },
+        'Rumeno': { currency: 'lei', locale: 'ro-RO', country: 'Romania', currencyPos: 'after' },
+        'Slovacco': { currency: '€', locale: 'sk-SK', country: 'Slovacchia', currencyPos: 'after' },
+        'Sloveno': { currency: '€', locale: 'sl-SI', country: 'Slovenia', currencyPos: 'after' },
+        'Croato': { currency: '€', locale: 'hr-HR', country: 'Croazia', currencyPos: 'after' },
+        'Greco': { currency: '€', locale: 'el-GR', country: 'Grecia', currencyPos: 'after' },
+        'Bulgaro': { currency: 'лв', locale: 'bg-BG', country: 'Bulgaria', currencyPos: 'after' },
+        'Ungherese': { currency: 'Ft', locale: 'hu-HU', country: 'Ungheria', currencyPos: 'after' },
+        'Austriaco': { currency: '€', locale: 'de-AT', country: 'Austria', currencyPos: 'after' },
+        'Lituano': { currency: '€', locale: 'lt-LT', country: 'Lituania', currencyPos: 'after' },
+        'Republica ceca': { currency: 'Kč', locale: 'cs-CZ', country: 'Repubblica Ceca', currencyPos: 'after' },
+        'Spagnolo': { currency: '€', locale: 'es-ES', country: 'Spagna', currencyPos: 'after' },
+        'Portoghese': { currency: '€', locale: 'pt-PT', country: 'Portogallo', currencyPos: 'after' },
+        'Tedesco': { currency: '€', locale: 'de-DE', country: 'Germania', currencyPos: 'after' },
+        'Lettonia': { currency: '€', locale: 'lv-LV', country: 'Lettonia', currencyPos: 'after' },
+        'Francese': { currency: '€', locale: 'fr-FR', country: 'Francia', currencyPos: 'after' },
+        'Inglese (Regno Unito)': { currency: '£', locale: 'en-GB', country: 'Regno Unito', currencyPos: 'before' },
+        'Inglese (Americano)': { currency: '$', locale: 'en-US', country: 'Stati Uniti', currencyPos: 'before' },
+        'Olandese': { currency: '€', locale: 'nl-NL', country: 'Paesi Bassi', currencyPos: 'after' },
+        'Svedese': { currency: 'kr', locale: 'sv-SE', country: 'Svezia', currencyPos: 'after' },
+        'Serbo': { currency: 'din', locale: 'sr-RS', country: 'Serbia', currencyPos: 'after' },
     };
     return configs[lang] || configs['Italiano'];
 };
@@ -254,7 +286,8 @@ const callGeminiWithRetry = async (fn: () => Promise<any>, maxRetries = 3): Prom
 
 export const generateLandingPage = async (product: ProductDetails, reviewCount: number): Promise<GeneratedContent> => {
     const ai = getAIInstance();
-    const langConfig = getLanguageConfig('Italiano');
+    const targetLang = product.language || 'Italiano';
+    const langConfig = getLanguageConfig(targetLang);
     
     const paragraphLengthPrompt = product.paragraphLength === 'medium' 
         ? "Each paragraph (feature description) must be at least 30 words long."
@@ -267,25 +300,32 @@ export const generateLandingPage = async (product: ProductDetails, reviewCount: 
     Target: ${product.targetAudience}
     Description: ${product.description}
     Tone: ${product.tone}
-    Language: Italiano
+    Language: ${targetLang}
     Features Count: ${product.featureCount || 3}
     Currency Symbol: ${langConfig.currency}
 
     Instructions:
-    - All text content must be in Italiano.
+    - All text content must be in ${targetLang}.
     - ${paragraphLengthPrompt}
     - IMPORTANT: In the feature descriptions, identify the key points and format them in bold using HTML <b>tags</b> (e.g., <b>punto fondamentale</b>).
     - MANDATORY: DO NOT use generic slogans like "Miglior Scelta 2023" or "Prodotto scelto da migliaia".
     - Instead, focus on product-specific benefits and clear calls to action.
     - FORBIDDEN: Do not mention dates like "2023" or "2024" in marketing slogans.
-    - Provide 10 real common Italian cities and 10 common Italian names for localizedCities and localizedNames.
-    - IMPORTANT: Include a "boxContent" object with a title like "Cosa Trovi nella Confezione?" and an array of items (exactly what's in the box, e.g., "1x Prodotto", "Manuale d'istruzioni").
+    - Provide 10 real common cities and 10 common names for localizedCities and localizedNames for ${langConfig.country}.
+    - IMPORTANT: Include a "boxContent" object with a title like "Cosa Trovi nella Confezione?" (translated) and an array of items (exactly what's in the box, e.g., "1x Prodotto", "Manuale d'istruzioni").
     - IMPORTANT: Include a "variants" object. If the product naturally has variants (colors, sizes, models), enable it and provide 2-3 options. If not, set enabled to false.
     - IMPORTANT: Include a "bottomOffer" section for a special price block at the end of the page.
-      - bottomOffer.title: Must be "${product.name} Oggi"
+      - bottomOffer.title: Must be "${product.name} Oggi" (translated)
       - bottomOffer.subtitle: A persuasive short text.
-      - bottomOffer.scarcityText: Must be "OFFERTA VALIDA SOLO PER OGGI"
-      - bottomOffer.ctaText: A long persuasive button text like "Acquista Ora e Rivoluziona i Tuoi Lavori con Sconto del 50%" (personalized for this specific product niche).
+      - bottomOffer.scarcityText: Must be "OFFERTA VALIDA SOLO PER OGGI" (translated)
+      - bottomOffer.ctaText: A long persuasive button text like "Acquista Ora e Rivoluziona i Tuoi Lavori con Sconto del 50%" (personalized for this specific product niche, translated).
+      - bottomOffer.features: MUST be an array of exactly 3 objects with "title" and "subtitle" (e.g., "Fast Shipping", "Risk-Free Trial", "12-Month Warranty") translated into ${targetLang}.
+    - IMPORTANT: In uiTranslation, include a "socialProof" field with the phrase "and {x} other people have purchased" translated into ${targetLang}. Use "{x}" as the placeholder for the number.
+    - IMPORTANT: In uiTranslation, include a "onlyLeft" field with a scarcity phrase like "Solo {x} rimasti a magazzino" translated into ${targetLang}. Use "{x}" as the placeholder for the number.
+    - IMPORTANT: In uiTranslation, include a "certified" field with the phrase "Acquisto verificato" translated into ${targetLang}.
+    - IMPORTANT: In uiTranslation, translate all form labels (nameLabel, phoneLabel, emailLabel, addressLabel, cityLabel, provinceLabel, capLabel, addressNumberLabel) into ${targetLang}.
+    - IMPORTANT: In uiTranslation, include an "offer" field translated into ${targetLang} (e.g., "Offerta").
+    - IMPORTANT: In uiTranslation, include an "assistantMessage" field translated into ${targetLang} (e.g., "Ciao! Compila il modulo, ci vorrà solo un minuto.").
     - Follow the GeneratedContent interface structure strictly.`;
 
     const response = await callGeminiWithRetry(() => ai.models.generateContent({
@@ -359,7 +399,18 @@ export const generateLandingPage = async (product: ProductDetails, reviewCount: 
                             title: { type: Type.STRING },
                             subtitle: { type: Type.STRING },
                             ctaText: { type: Type.STRING },
-                            scarcityText: { type: Type.STRING }
+                            scarcityText: { type: Type.STRING },
+                            features: {
+                                type: Type.ARRAY,
+                                items: {
+                                    type: Type.OBJECT,
+                                    properties: {
+                                        title: { type: Type.STRING },
+                                        subtitle: { type: Type.STRING }
+                                    },
+                                    required: ["title", "subtitle"]
+                                }
+                            }
                         },
                         required: ["title", "subtitle", "ctaText", "scarcityText"]
                     },
@@ -367,6 +418,7 @@ export const generateLandingPage = async (product: ProductDetails, reviewCount: 
                         type: Type.OBJECT,
                         properties: {
                             reviews: { type: Type.STRING },
+                            offer: { type: Type.STRING },
                             checkoutHeader: { type: Type.STRING },
                             completeOrder: { type: Type.STRING },
                             shippingInsurance: { type: Type.STRING },
@@ -384,11 +436,15 @@ export const generateLandingPage = async (product: ProductDetails, reviewCount: 
                             warranty: { type: Type.STRING },
                             certified: { type: Type.STRING },
                             techDesign: { type: Type.STRING },
+                            orderReceived: { type: Type.STRING },
+                            orderReceivedMsg: { type: Type.STRING },
+                            discountLabel: { type: Type.STRING },
                             privacyPolicy: { type: Type.STRING },
                             termsConditions: { type: Type.STRING },
                             cookiePolicy: { type: Type.STRING },
                             rightsReserved: { type: Type.STRING },
                             generatedPageNote: { type: Type.STRING },
+                            assistantMessage: { type: Type.STRING },
                             nameLabel: { type: Type.STRING },
                             phoneLabel: { type: Type.STRING },
                             emailLabel: { type: Type.STRING },
@@ -434,7 +490,7 @@ export const generateLandingPage = async (product: ProductDetails, reviewCount: 
 
     return {
         ...baseContent,
-        language: 'Italiano',
+        language: targetLang,
         currency: langConfig.currency,
         niche: product.niche,
         templateId: 'gadget-cod',
@@ -444,12 +500,14 @@ export const generateLandingPage = async (product: ProductDetails, reviewCount: 
         checkoutButtonColor: 'bg-orange-500 hover:bg-orange-600 text-white shadow-orange-200',
         announcementBgColor: '#0f172a',
         announcementTextColor: '#ffffff',
-        stockConfig: { enabled: true, quantity: 13, textOverride: "Solo {x} rimasti a magazzino" },
+        showLiveAssistant: true,
+        showCardPayment: true,
+        stockConfig: { enabled: true, quantity: 13, textOverride: baseContent.uiTranslation?.onlyLeft || "Solo {x} rimasti a magazzino" },
         socialProofConfig: { enabled: true, intervalSeconds: 10, maxShows: 4 },
         socialProofCount: randomSocialProofCount,
         showSocialProofBadge: true,
         showDeliveryTimeline: true,
-        extraLandingHtml: TIKTOK_SLIDER_HTML, // Integrazione del blocco video TikTok
+        extraLandingHtml: TIKTOK_SLIDER_HTML, 
         insuranceConfig: { enabled: true, label: baseContent.uiTranslation?.shippingInsurance || "Assicurazione Spedizione", cost: "4.90", defaultChecked: true },
         gadgetConfig: { enabled: true, label: baseContent.uiTranslation?.gadgetLabel || "Gadget Omaggio", cost: "0.00", defaultChecked: true },
         boxContent: {
@@ -465,7 +523,12 @@ export const generateLandingPage = async (product: ProductDetails, reviewCount: 
         },
         bottomOffer: {
             enabled: true,
-            ...baseContent.bottomOffer
+            ...baseContent.bottomOffer,
+            features: baseContent.bottomOffer?.features?.length > 0 ? baseContent.bottomOffer.features : [
+                { title: "Spedizione Veloce", subtitle: "Consegna in 24/48 ore" },
+                { title: "Prova Senza Rischi", subtitle: "30 giorni soddisfatti o rimborsati" },
+                { title: "Garanzia 12 Mesi", subtitle: "Sostituzione immediata" }
+            ]
         },
         formConfiguration: [
             { id: 'name', label: baseContent.uiTranslation?.nameLabel || 'Nome e Cognome', enabled: true, required: true, type: 'text', width: 12, validationType: 'none' },
@@ -480,17 +543,171 @@ export const generateLandingPage = async (product: ProductDetails, reviewCount: 
         uiTranslation: {
             ...COMMON_UI_DEFAULTS,
             ...baseContent.uiTranslation,
-            socialProof: "altre {x} persone hanno acquistato",
             socialProofBadgeName: randomName,
-            certified: "Acquisto Verificato",
-            currencyPos: 'before',
+            currencyPos: langConfig.currencyPos,
             legalDisclaimer: baseContent.uiTranslation?.legalDisclaimer || DISCLAIMER_BASE,
         } as UiTranslation
     };
 };
 
 export const translateLandingPage = async (content: GeneratedContent, targetLang: string): Promise<GeneratedContent> => {
-    return content;
+    const ai = getAIInstance();
+    const langConfig = getLanguageConfig(targetLang);
+
+    // Helper to translate a specific chunk of text or object
+    const translateChunk = async (chunk: any, description: string): Promise<any> => {
+        const prompt = `
+        TASK: Translate the following JSON object into ${targetLang} for a high-converting landing page.
+        CONTEXT: ${description}
+        TONE: Persuasive, professional, and culturally adapted for ${langConfig.country}.
+        CURRENCY: Use "${langConfig.currency}" for any prices mentioned.
+        SOCIAL PROOF: Ensure the "socialProof" field in uiTranslation is translated as "and {x} other people have purchased" in ${targetLang}, keeping the "{x}" placeholder.
+        SCARCITY: Translate the "onlyLeft" field in uiTranslation accurately into ${targetLang}, ensuring the "{x}" placeholder is preserved and refers to the number of items left.
+        VERIFICATION: Ensure the "certified" field in uiTranslation is translated as "Acquisto verificato" in ${targetLang}.
+        
+        MANDATORY: 
+        - DO NOT skip any fields.
+        - Maintain the exact same JSON structure.
+        - Translate all string values.
+        - If the text contains HTML tags like <b>, preserve them.
+        
+        JSON to translate:
+        ${JSON.stringify(chunk)}
+        `;
+
+        const response = await callGeminiWithRetry(() => ai.models.generateContent({
+            model: 'gemini-3-flash-preview',
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json"
+            }
+        }));
+
+        return JSON.parse(cleanJson(response.text || '{}'));
+    };
+
+    // 1. Translate Hero & Basic Info
+    const heroChunk = await translateChunk({
+        headline: content.headline,
+        subheadline: content.subheadline,
+        ctaText: content.ctaText,
+        ctaSubtext: content.ctaSubtext,
+        announcements: content.announcements?.map(a => a.text)
+    }, "Hero section and main call to action");
+
+    // 2. Translate Features (one by one for 100% accuracy)
+    const translatedFeatures = await Promise.all(content.features.map(async (f, i) => {
+        return await translateChunk(
+            { title: f.title, description: f.description },
+            `Feature number ${i + 1} description`
+        );
+    }));
+
+    // 3. Translate Benefits & Box Content
+    const benefitsAndBox = await translateChunk({
+        benefits: content.benefits,
+        boxContent: content.boxContent
+    }, "Product benefits list and what's inside the box");
+
+    // 4. Translate UI Elements & Bottom Offer
+    const uiAndOffer = await translateChunk({
+        uiTranslation: { ...COMMON_UI_DEFAULTS, ...content.uiTranslation },
+        bottomOffer: {
+            ...content.bottomOffer,
+            features: content.bottomOffer?.features?.length > 0 ? content.bottomOffer.features : [
+                { title: "Spedizione Veloce", subtitle: "Consegna in 24/48 ore" },
+                { title: "Prova Senza Rischi", subtitle: "30 giorni soddisfatti o rimborsati" },
+                { title: "Garanzia 12 Mesi", subtitle: "Sostituzione immediata" }
+            ]
+        },
+        variants: content.variants,
+        formConfiguration: content.formConfiguration?.map(f => ({ id: f.id, label: f.label }))
+    }, "Checkout UI labels, legal text, final offer section, and form labels");
+
+    // 5. Translate Testimonials (Translate the first 12, which are the most important)
+    let translatedTestimonials = content.testimonials || [];
+    if (translatedTestimonials.length > 0) {
+        const toTranslate = translatedTestimonials.slice(0, 12);
+        const testimonialsChunk = await translateChunk(toTranslate.map(t => ({
+            name: t.name,
+            role: t.role,
+            title: t.title,
+            text: t.text,
+            date: t.date
+        })), "Customer testimonials and reviews. Adapt names and roles (cities) to be realistic for " + langConfig.country);
+        
+        const translatedArray = Array.isArray(testimonialsChunk) ? testimonialsChunk : (testimonialsChunk.testimonials || []);
+        
+        translatedTestimonials = translatedArray.map((t: any, i: number) => ({
+            ...translatedTestimonials[i],
+            ...t
+        })).concat(translatedTestimonials.slice(12));
+    }
+
+    // 6. Localized Cities and Names (Special generation for the target country)
+    const localizationPrompt = `Generate 10 common real cities and 10 common real first names for ${langConfig.country}. Return as JSON: { "cities": [], "names": [] }`;
+    const locResponse = await callGeminiWithRetry(() => ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: localizationPrompt,
+        config: { responseMimeType: "application/json" }
+    }));
+    const locData = JSON.parse(cleanJson(locResponse.text || '{}'));
+
+    // Reconstruct the final content
+    return {
+        ...content,
+        language: targetLang,
+        currency: langConfig.currency,
+        headline: heroChunk.headline,
+        subheadline: heroChunk.subheadline,
+        ctaText: heroChunk.ctaText,
+        ctaSubtext: heroChunk.ctaSubtext,
+        announcements: content.announcements?.map((a, i) => ({
+            ...a,
+            text: heroChunk.announcements?.[i] || a.text
+        })),
+        features: content.features.map((f, i) => ({
+            ...f,
+            title: translatedFeatures[i].title,
+            description: translatedFeatures[i].description
+        })),
+        benefits: benefitsAndBox.benefits,
+        boxContent: benefitsAndBox.boxContent,
+        uiTranslation: {
+            ...uiAndOffer.uiTranslation,
+            localizedCities: locData.cities || uiAndOffer.uiTranslation.localizedCities,
+            localizedNames: locData.names || uiAndOffer.uiTranslation.localizedNames,
+            currencyPos: langConfig.currencyPos
+        },
+        testimonials: translatedTestimonials,
+        bottomOffer: uiAndOffer.bottomOffer,
+        variants: uiAndOffer.variants,
+        stockConfig: {
+            ...content.stockConfig,
+            textOverride: uiAndOffer.uiTranslation.onlyLeft || content.stockConfig.textOverride
+        },
+        formConfiguration: content.formConfiguration?.map(field => {
+            let translatedLabel = field.label;
+            const translatedField = uiAndOffer.formConfiguration?.find((f: any) => f.id === field.id);
+            if (translatedField && translatedField.label) {
+                translatedLabel = translatedField.label;
+            } else {
+                if (field.id === 'name' && uiAndOffer.uiTranslation?.nameLabel) translatedLabel = uiAndOffer.uiTranslation.nameLabel;
+                if (field.id === 'phone' && uiAndOffer.uiTranslation?.phoneLabel) translatedLabel = uiAndOffer.uiTranslation.phoneLabel;
+                if (field.id === 'email' && uiAndOffer.uiTranslation?.emailLabel) translatedLabel = uiAndOffer.uiTranslation.emailLabel;
+                if (field.id === 'address' && uiAndOffer.uiTranslation?.addressLabel) translatedLabel = uiAndOffer.uiTranslation.addressLabel;
+                if (field.id === 'city' && uiAndOffer.uiTranslation?.cityLabel) translatedLabel = uiAndOffer.uiTranslation.cityLabel;
+                if (field.id === 'province' && uiAndOffer.uiTranslation?.provinceLabel) translatedLabel = uiAndOffer.uiTranslation.provinceLabel;
+                if (field.id === 'cap' && uiAndOffer.uiTranslation?.capLabel) translatedLabel = uiAndOffer.uiTranslation.capLabel;
+                if (field.id === 'address_number' && uiAndOffer.uiTranslation?.addressNumberLabel) translatedLabel = uiAndOffer.uiTranslation.addressNumberLabel;
+            }
+            
+            return {
+                ...field,
+                label: translatedLabel
+            };
+        })
+    };
 };
 
 /**
@@ -517,7 +734,7 @@ export const generateReviews = async (product: ProductDetails, language: string,
         
         const contentsParts: any[] = [];
         const promptText = `
-        TASK: Generate EXACTLY ${batchToGen} unique and realistic customer reviews for the product "${product.name}" in Italiano.
+        TASK: Generate EXACTLY ${batchToGen} unique and realistic customer reviews for the product "${product.name}" in ${language}.
 
         CONTEXT:
         - Description: "${product.description}"
@@ -527,7 +744,7 @@ export const generateReviews = async (product: ProductDetails, language: string,
         - Return ONLY a JSON Array of EXACTLY ${batchToGen} objects.
         - Each review must have a unique tone, unique name, and unique city.
         - ${isFiller ? "MANDATORY: These are filler reviews. Keep the 'text' field EMPTY or extremely short (max 5 words)." : "Focus on different product-specific aspects (speed, quality, ease of use)."}
-        - MANDATORY: The verification status is ALWAYS "Acquisto Verificato".
+        - MANDATORY: The verification status is ALWAYS "Acquisto verificato" (translate this to ${language}).
         - Dates should be formatted as "DD MMM YYYY".
         - Each review needs name, title, rating (4-5 stars), text, and date.`;
 
@@ -601,7 +818,11 @@ export const generateActionImages = async (product: ProductDetails, styles: AIIm
         ${customPrompt ? `SPECIFIC USER REQUEST: "${customPrompt}"` : ''}
         
         Visual Style: ${stylePrompts[style]}.
-        Ensure the lighting is cinematic and the colors are vibrant but realistic.`;
+        Ensure the lighting is cinematic and the colors are vibrant but realistic.
+        
+        CRITICAL INSTRUCTIONS:
+        1. The generated image MUST be based heavily on the provided reference image. Maintain the exact same product design, shape, and core features. Do not invent a completely different product.
+        2. If you include any text, labels, or writing in the generated image, it MUST be in the following language: ${product.language || 'Italiano'}.`;
 
         const contentsParts: any[] = [{ text: promptText }];
         
@@ -653,10 +874,18 @@ export const rewriteLandingPage = async (content: GeneratedContent, tone: PageTo
         features: content.features.map(f => ({ title: f.title, description: f.description })),
         announcements: content.announcements?.map(a => a.text),
         boxContent: content.boxContent,
-        bottomOffer: content.bottomOffer
+        bottomOffer: {
+            ...content.bottomOffer,
+            features: content.bottomOffer?.features?.length > 0 ? content.bottomOffer.features : [
+                { title: "Spedizione Veloce", subtitle: "Consegna in 24/48 ore" },
+                { title: "Prova Senza Rischi", subtitle: "30 giorni soddisfatti o rimborsati" },
+                { title: "Garanzia 12 Mesi", subtitle: "Sostituzione immediata" }
+            ]
+        }
     };
 
-    const prompt = `Rewrite the following landing page content to have a ${tone} tone in Italiano: ${JSON.stringify(textFields)}`;
+    const targetLang = content.language || 'Italiano';
+    const prompt = `Rewrite the following landing page content to have a ${tone} tone in ${targetLang}: ${JSON.stringify(textFields)}`;
 
     const response = await callGeminiWithRetry(() => ai.models.generateContent({
         model: 'gemini-3-flash-preview',
@@ -694,7 +923,17 @@ export const rewriteLandingPage = async (content: GeneratedContent, tone: PageTo
                             title: { type: Type.STRING },
                             subtitle: { type: Type.STRING },
                             ctaText: { type: Type.STRING },
-                            scarcityText: { type: Type.STRING }
+                            scarcityText: { type: Type.STRING },
+                            features: {
+                                type: Type.ARRAY,
+                                items: {
+                                    type: Type.OBJECT,
+                                    properties: {
+                                        title: { type: Type.STRING },
+                                        subtitle: { type: Type.STRING }
+                                    }
+                                }
+                            }
                         }
                     },
                     announcements: { type: Type.ARRAY, items: { type: Type.STRING } }

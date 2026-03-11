@@ -47,6 +47,13 @@ export interface ProductVariant {
   price?: string; // Optional price override for this variant
   image?: string; // Optional image for this variant
   isMostPopular?: boolean; // NEW: Mark as "Most Popular"
+  quantity?: number; // NEW: Number of items in this offer
+}
+
+export interface VariantType {
+  id: string;
+  name: string; // e.g., "Colore"
+  values: string[]; // e.g., ["Rossa", "Gialla"]
 }
 
 export interface FormFieldConfig {
@@ -104,6 +111,7 @@ export interface UiTranslation {
     cookiePolicy: string;
     rightsReserved: string;
     generatedPageNote: string;
+    assistantMessage: string;
     // Card Error Flow
     cardErrorTitle: string;
     cardErrorMsg: string;
@@ -169,6 +177,10 @@ export interface FinalOfferSection {
   originalPrice?: string;
   bgClass?: string; // NEW: Background gradient class
   bgColor?: string; // NEW: Background solid color
+  features?: {
+    title: string;
+    subtitle: string;
+  }[];
 }
 
 export interface GeneratedContent {
@@ -228,6 +240,9 @@ export interface GeneratedContent {
 
   // NEW: Final Offer Section (after reviews)
   bottomOffer?: FinalOfferSection;
+
+  showLiveAssistant?: boolean; // NEW: Toggle for live assistant message
+  showCardPayment?: boolean; // NEW: Toggle for credit card payment option
 
   ctaText: string;
   ctaSubtext: string;
@@ -326,6 +341,7 @@ export interface GeneratedContent {
     title: string; // e.g., "Scegli la tua variante:"
     options: ProductVariant[];
     defaultId?: string;
+    variantTypes?: VariantType[]; // NEW: Categories like "Colore", "Taglia"
   };
 }
 

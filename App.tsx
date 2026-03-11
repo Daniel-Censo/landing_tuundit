@@ -204,14 +204,23 @@ ${titleHtml}
 `;
 };
 
+const LANGUAGES = [
+    'Italiano', 'Rumeno', 'Slovacco', 'Sloveno', 'Croato', 'Greco', 'Bulgaro', 
+    'Ungherese', 'Austriaco', 'Lituano', 'Republica ceca', 'Spagnolo', 'Portoghese', 
+    'Tedesco', 'Lettonia', 'Francese', 'Inglese (Regno Unito)', 'Inglese (Americano)', 
+    'Olandese', 'Svedese', 'Serbo'
+];
+
 const DuplicateModal: React.FC<{ 
     isOpen: boolean; 
     onClose: () => void; 
     page: LandingPageRow; 
     onSuccess: (newPage: any) => void;
-}> = ({ isOpen, onClose, page, onSuccess }) => {
-    const [strategy, setStrategy] = useState<'clone' | 'reword'>('clone');
+    session: UserSession | null;
+}> = ({ isOpen, onClose, page, onSuccess, session }) => {
+    const [strategy, setStrategy] = useState<'clone' | 'reword' | 'translate'>('clone');
     const [targetTone, setTargetTone] = useState(PageTone.PROFESSIONAL);
+    const [targetLang, setTargetLang] = useState('Italiano');
     const [newName, setNewName] = useState(`${page.product_name} (Copia)`);
     const [isLoading, setIsLoading] = useState(false);
     const [progress, setProgress] = useState('');
@@ -241,10 +250,18 @@ const DuplicateModal: React.FC<{
                 } else {
                   finalThankYou = createDefaultThankYouContent(finalContent);
                 }
+            } else if (strategy === 'translate') {
+                setProgress(`Traduzione professionale in ${targetLang} con AI...`);
+                finalContent = await translateLandingPage(fullPage.content, targetLang);
+                if (fullPage.thank_you_content) {
+                  finalThankYou = await translateLandingPage(fullPage.thank_you_content, targetLang);
+                } else {
+                  finalThankYou = createDefaultThankYouContent(finalContent);
+                }
             }
 
             setProgress('Salvataggio nel database...');
-            const langConfig = getLanguageConfig('Italiano');
+            const langConfig = getLanguageConfig(strategy === 'translate' ? targetLang : (fullPage.content.language || 'Italiano'));
             const suffix = '-grazie';
             const randomId = Math.floor(Math.random() * 10000);
             const baseSlug = formatSlugLocal(newName) + '-' + randomId;
@@ -254,9 +271,10 @@ const DuplicateModal: React.FC<{
                 niche: fullPage.niche,
                 slug: baseSlug,
                 thank_you_slug: baseSlug + suffix,
-                content: { ...finalContent, language: 'Italiano', currency: langConfig.currency },
+                content: { ...finalContent, language: strategy === 'translate' ? targetLang : (fullPage.content.language || 'Italiano'), currency: langConfig.currency },
                 thank_you_content: finalThankYou || createDefaultThankYouContent(finalContent),
-                is_published: false
+                is_published: false,
+                user_id: session?.id
             };
 
             const { data, error } = await supabase.from('landing_pages').insert(newPagePayload).select().single();
@@ -303,10 +321,11 @@ const DuplicateModal: React.FC<{
                 <div className="p-8 space-y-8">
                     <div className="space-y-4">
                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Scegli Strategia</label>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-3 gap-3">
                             {[
                                 { id: 'clone', icon: <Copy className="w-4 h-4" />, label: 'Clone', desc: 'Copia Identica' },
-                                { id: 'reword', icon: <Wand2 className="w-4 h-4" />, label: 'Variation', desc: 'AI Copy Rewrite' }
+                                { id: 'reword', icon: <Wand2 className="w-4 h-4" />, label: 'Variation', desc: 'AI Copy Rewrite' },
+                                { id: 'translate', icon: <Languages className="w-4 h-4" />, label: 'Translate', desc: 'AI Translation' }
                             ].map(item => (
                                 <button 
                                     key={item.id} 
@@ -321,16 +340,27 @@ const DuplicateModal: React.FC<{
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-6">
+                    <div className="grid grid-cols-2 gap-6">
                         <div className="space-y-4">
                             <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Tono di Voce</label>
                             <select 
-                                disabled={strategy !== 'reword'}
+                                disabled={strategy === 'clone'}
                                 value={targetTone} 
                                 onChange={e => setTargetTone(e.target.value as PageTone)} 
                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-emerald-500 outline-none transition-all disabled:opacity-30"
                             >
                                 {Object.values(PageTone).map(t => <option key={t} value={t}>{t}</option>)}
+                            </select>
+                        </div>
+                        <div className="space-y-4">
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Lingua Target</label>
+                            <select 
+                                disabled={strategy !== 'translate'}
+                                value={targetLang} 
+                                onChange={e => setTargetLang(e.target.value)} 
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-emerald-500 outline-none transition-all disabled:opacity-30"
+                            >
+                                {LANGUAGES.map(l => <option key={l} value={l}>{l}</option>)}
                             </select>
                         </div>
                     </div>
@@ -397,8 +427,8 @@ const PageCard = React.memo(({ page, onView, onEdit, onDuplicate, onDownload, on
 
 const createDefaultThankYouContent = (landingContent: GeneratedContent): GeneratedContent => ({
     ...landingContent,
-    headline: landingContent.uiTranslation?.thankYouTitle || 'Grazie per il tuo acquisto {name}! ',
-    subheadline: landingContent.uiTranslation?.thankYouMsg || ' Il tuo ordine è in fase di elaborazione. Verrai contattato telefonicamente o su whatsapp al numero {phone} per la conferma.',
+    headline: landingContent.uiTranslation?.thankYouTitle || "Grazie per il tuo acquisto {name}!",
+    subheadline: landingContent.uiTranslation?.thankYouMsg || "Il tuo ordine è stato ricevuto. Un nostro consulente ti contatterà a breve al numero {phone}.",
     heroImagePrompt: '', 
     benefits: [], 
     features: [], 
@@ -630,10 +660,19 @@ export const App: React.FC = () => {
   const fetchPublicPages = useCallback(async () => {
     if (!supabase) return;
     setIsLoadingPages(true);
-    const { data, error } = await supabase
+    
+    const ownerId = (import.meta as any).env?.VITE_OWNER_ID;
+    
+    let query = supabase
         .from('landing_pages')
         .select('id, product_name, slug, niche, is_published, content->>heroImageBase64, content->>subheadline, content->>stockConfig')
-        .eq('is_published', true)
+        .eq('is_published', true);
+        
+    if (ownerId) {
+        query = query.eq('user_id', ownerId);
+    }
+
+    const { data, error } = await query
         .order('created_at', { ascending: false })
         .limit(24); 
     
@@ -657,6 +696,7 @@ export const App: React.FC = () => {
         const { data, error } = await supabase
             .from('landing_pages')
             .select('id, product_name, slug, thank_you_slug, niche, is_published, created_at, content->>heroImageBase64, content->>subheadline, content->>stockConfig')
+            .eq('user_id', session.id)
             .order('created_at', { ascending: false });
         
         if (!error && data) {
@@ -697,8 +737,17 @@ export const App: React.FC = () => {
             });
 
             // 2. Settings check
-            const { data: settingsData } = await supabase.from('site_settings').select('config').eq('id', 1).maybeSingle();
-            if (settingsData?.config) setSiteConfig(prev => ({ ...prev, ...settingsData.config }));
+            const ownerId = (import.meta as any).env?.VITE_OWNER_ID;
+            const settingsUserId = currentSession?.user.id || ownerId;
+            
+            if (settingsUserId) {
+                const { data: settingsData } = await supabase
+                    .from('site_settings')
+                    .select('config')
+                    .eq('user_id', settingsUserId)
+                    .maybeSingle();
+                if (settingsData?.config) setSiteConfig(prev => ({ ...prev, ...settingsData.config }));
+            }
 
             // 3. Routing check
             const path = window.location.pathname.replace(/^\/|\/$/g, '');
@@ -708,6 +757,13 @@ export const App: React.FC = () => {
 
             if (slugParam || idParam) {
                 let query = supabase.from('landing_pages').select('*');
+                
+                // Isolation filter
+                const ownerId = (import.meta as any).env?.VITE_OWNER_ID;
+                if (ownerId) {
+                    query = query.eq('user_id', ownerId);
+                }
+
                 if (slugParam) {
                     query = query.or(`slug.eq.${slugParam},thank_you_slug.eq.${slugParam}`);
                 } else {
@@ -824,7 +880,8 @@ export const App: React.FC = () => {
         const dbPayload = {
             product_name: targetName, slug: newSlug, thank_you_slug: newTySlug, niche: product.niche,
             content: { ...finalLandingContent, templateId: selectedTemplate },
-            thank_you_content: finalTyContent, is_published: asNew ? false : isPublished
+            thank_you_content: finalTyContent, is_published: asNew ? false : isPublished,
+            user_id: session.id
         };
 
         const { error } = (editingPageId && !asNew) ? 
@@ -866,9 +923,11 @@ export const App: React.FC = () => {
           ? product.selectedImageStyles 
           : ['lifestyle' as AIImageStyle];
 
+      const productWithImages = { ...product, images: finalImages };
+
       if (aiImageCount > 0) {
           try {
-              const aiImgs = await generateActionImages(product, stylesToUse, aiImageCount, customImagePrompt);
+              const aiImgs = await generateActionImages(productWithImages, stylesToUse, aiImageCount, customImagePrompt);
               finalImages = [...finalImages, ...aiImgs];
           } catch (e) {
               console.warn("AI Image generation failed during landing page creation", e);
@@ -880,7 +939,7 @@ export const App: React.FC = () => {
       
       if (reviewCount > 0) {
           try {
-              const aiReviews = await generateReviews(updatedProduct, 'Italiano', reviewCount);
+              const aiReviews = await generateReviews(updatedProduct, product.language || 'Italiano', reviewCount);
               result.testimonials = aiReviews;
           } catch (e) {
               console.warn("AI Review generation failed", e);
@@ -948,10 +1007,15 @@ export const App: React.FC = () => {
         ? product.selectedImageStyles 
         : ['lifestyle' as AIImageStyle];
 
+    let currentImages = [...(product.images || [])];
+    if (imageUrl && imageUrl.trim() !== '') currentImages.push(imageUrl.trim());
+    const productWithImages = { ...product, images: currentImages };
+
     setIsGeneratingAIImage(true);
     try {
-        const aiImgs = await generateActionImages(product, stylesToUse, 1, customImagePrompt);
-        setProduct(prev => ({ ...prev, images: [...(prev.images || []), ...aiImgs] }));
+        const aiImgs = await generateActionImages(productWithImages, stylesToUse, 1, customImagePrompt);
+        setProduct(prev => ({ ...prev, images: [...currentImages, ...aiImgs] }));
+        setImageUrl(''); // Clear the input since we added it
     } catch (e: any) {
         alert("Errore nella generazione immagine AI. Dettaglio: " + e.message);
     } finally {
@@ -1135,6 +1199,7 @@ export const App: React.FC = () => {
                 isOpen={duplicateModalConfig.isOpen} 
                 onClose={() => setDuplicateModalConfig({ isOpen: false, page: null })} 
                 page={duplicateModalConfig.page}
+                session={session}
                 onSuccess={() => fetchAllAdminPages()}
             />
         )}
@@ -1215,9 +1280,13 @@ export const App: React.FC = () => {
                         <input type="text" value={siteConfig.footerText} onChange={e => setSiteConfig({...siteConfig, footerText: e.target.value})} className="w-full border border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-emerald-500 outline-none transition-all"/>
                     </div>
                     <button onClick={async () => {
-                        if (supabase) {
-                            const { error } = await supabase.from('site_settings').upsert({ id: 1, config: siteConfig });
+                        if (supabase && session) {
+                            const { error } = await supabase.from('site_settings').upsert({ 
+                                user_id: session.id, 
+                                config: siteConfig 
+                            }, { onConflict: 'user_id' });
                             if (!error) alert("Impostazioni salvate correttamente!");
+                            else alert("Errore nel salvataggio: " + error.message);
                         }
                     }} className="bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">Salva Impostazioni</button>
                 </div>
@@ -1245,6 +1314,20 @@ export const App: React.FC = () => {
                                     <input type="text" placeholder="Nome Prodotto" value={product.name} onChange={e => setProduct({...product, name: e.target.value})} className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-emerald-500 outline-none transition-all" />
                                     <input type="text" placeholder="Nicchia" value={product.niche} onChange={e => setProduct({...product, niche: e.target.value})} className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-emerald-500 outline-none transition-all" />
                                     <input type="text" placeholder="Target" value={product.targetAudience} onChange={e => setProduct({...product, targetAudience: e.target.value})} className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-emerald-500 outline-none transition-all" />
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div className="space-y-1">
+                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Lingua</label>
+                                            <select value={product.language} onChange={e => setProduct({...product, language: e.target.value})} className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-emerald-500 outline-none transition-all">
+                                                {LANGUAGES.map(l => <option key={l} value={l}>{l}</option>)}
+                                            </select>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Tono</label>
+                                            <select value={product.tone} onChange={e => setProduct({...product, tone: e.target.value as PageTone})} className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-emerald-500 outline-none transition-all">
+                                                {Object.values(PageTone).map(t => <option key={t} value={t}>{t}</option>)}
+                                            </select>
+                                        </div>
+                                    </div>
                                     <textarea placeholder="Descrizione del Prodotto" value={product.description} onChange={e => setProduct({...product, description: e.target.value})} className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-emerald-500 outline-none transition-all h-24 resize-none" />
                                 </div>
 
@@ -1679,6 +1762,47 @@ export const App: React.FC = () => {
                                                             onChange={e => updateContent({ bottomOffer: { ...generatedContent.bottomOffer!, scarcityText: e.target.value } })} 
                                                             className="w-full border border-slate-200 rounded-lg p-2 text-xs uppercase font-black" 
                                                         />
+                                                    </div>
+
+                                                    <div className="pt-3 border-t border-slate-100">
+                                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Caratteristiche (Icone)</label>
+                                                        <div className="space-y-3">
+                                                            {[0, 1, 2].map((i) => (
+                                                                <div key={i} className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                                                                    <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Icona {i + 1}</label>
+                                                                    <input 
+                                                                        type="text" 
+                                                                        value={generatedContent.bottomOffer?.features?.[i]?.title || ''} 
+                                                                        onChange={e => {
+                                                                            const newFeatures = [...(generatedContent.bottomOffer?.features || [
+                                                                                { title: "Spedizione Veloce", subtitle: "Consegna in 24/48 ore" },
+                                                                                { title: "Prova Senza Rischi", subtitle: "30 giorni soddisfatti o rimborsati" },
+                                                                                { title: "Garanzia 12 Mesi", subtitle: "Sostituzione immediata" }
+                                                                            ])];
+                                                                            newFeatures[i] = { ...newFeatures[i], title: e.target.value };
+                                                                            updateContent({ bottomOffer: { ...generatedContent.bottomOffer!, features: newFeatures } });
+                                                                        }} 
+                                                                        placeholder="Titolo"
+                                                                        className="w-full border border-slate-200 rounded-lg p-2 text-xs font-bold mb-2" 
+                                                                    />
+                                                                    <input 
+                                                                        type="text" 
+                                                                        value={generatedContent.bottomOffer?.features?.[i]?.subtitle || ''} 
+                                                                        onChange={e => {
+                                                                            const newFeatures = [...(generatedContent.bottomOffer?.features || [
+                                                                                { title: "Spedizione Veloce", subtitle: "Consegna in 24/48 ore" },
+                                                                                { title: "Prova Senza Rischi", subtitle: "30 giorni soddisfatti o rimborsati" },
+                                                                                { title: "Garanzia 12 Mesi", subtitle: "Sostituzione immediata" }
+                                                                            ])];
+                                                                            newFeatures[i] = { ...newFeatures[i], subtitle: e.target.value };
+                                                                            updateContent({ bottomOffer: { ...generatedContent.bottomOffer!, features: newFeatures } });
+                                                                        }} 
+                                                                        placeholder="Sottotitolo"
+                                                                        className="w-full border border-slate-200 rounded-lg p-2 text-xs" 
+                                                                    />
+                                                                </div>
+                                                            ))}
+                                                        </div>
                                                     </div>
 
                                                     <div className="pt-3 border-t border-slate-100">
@@ -2330,7 +2454,7 @@ export const App: React.FC = () => {
                                                 />
                                             </div>
                                             {generatedContent.variants?.enabled && (
-                                                <div className="space-y-4 animate-in fade-in">
+                                                <div className="space-y-6 animate-in fade-in">
                                                     <div>
                                                         <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Titolo Sezione</label>
                                                         <input 
@@ -2341,20 +2465,97 @@ export const App: React.FC = () => {
                                                             placeholder="Esempio: Scegli il tuo modello:"
                                                         />
                                                     </div>
+
+                                                    {/* NEW: Variant Categories (Colore, Taglia, etc.) */}
                                                     <div className="space-y-3">
-                                                        <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Opzioni Varianti</label>
+                                                        <div className="flex items-center justify-between">
+                                                            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Categorie Varianti (es: Colore, Taglia)</label>
+                                                            <button 
+                                                                onClick={() => {
+                                                                    const newTypes = [...(generatedContent.variants?.variantTypes || []), { id: Math.random().toString(36).substr(2, 9), name: 'Nuova Categoria', values: ['Valore 1'] }];
+                                                                    updateContent({ variants: { ...generatedContent.variants!, variantTypes: newTypes } });
+                                                                }}
+                                                                className="text-[10px] font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
+                                                            >
+                                                                <Plus className="w-3 h-3"/> Aggiungi Categoria
+                                                            </button>
+                                                        </div>
+                                                        <div className="space-y-3">
+                                                            {(generatedContent.variants?.variantTypes || []).map((type, typeIdx) => (
+                                                                <div key={type.id} className="p-3 bg-emerald-50/50 rounded-xl border border-emerald-100 space-y-3">
+                                                                    <div className="flex justify-between items-center">
+                                                                        <input 
+                                                                            type="text" 
+                                                                            value={type.name} 
+                                                                            onChange={e => {
+                                                                                const newTypes = [...generatedContent.variants!.variantTypes!];
+                                                                                newTypes[typeIdx] = { ...type, name: e.target.value };
+                                                                                updateContent({ variants: { ...generatedContent.variants!, variantTypes: newTypes } });
+                                                                            }}
+                                                                            className="bg-transparent border-none font-bold text-[11px] text-emerald-900 p-0 focus:ring-0 w-full"
+                                                                            placeholder="Nome Categoria (es: Colore)"
+                                                                        />
+                                                                        <button onClick={() => {
+                                                                            const newTypes = generatedContent.variants!.variantTypes!.filter((_, idx) => idx !== typeIdx);
+                                                                            updateContent({ variants: { ...generatedContent.variants!, variantTypes: newTypes } });
+                                                                        }} className="text-red-400 hover:text-red-600"><Trash2 className="w-3.5 h-3.5"/></button>
+                                                                    </div>
+                                                                    <div className="space-y-2">
+                                                                        <div className="flex flex-wrap gap-1.5">
+                                                                            {type.values.map((val, valIdx) => (
+                                                                                <div key={valIdx} className="flex items-center gap-1 bg-white border border-emerald-200 rounded-md px-2 py-1">
+                                                                                    <input 
+                                                                                        type="text" 
+                                                                                        value={val} 
+                                                                                        onChange={e => {
+                                                                                            const newTypes = [...generatedContent.variants!.variantTypes!];
+                                                                                            const newValues = [...type.values];
+                                                                                            newValues[valIdx] = e.target.value;
+                                                                                            newTypes[typeIdx] = { ...type, values: newValues };
+                                                                                            updateContent({ variants: { ...generatedContent.variants!, variantTypes: newTypes } });
+                                                                                        }}
+                                                                                        className="bg-transparent border-none text-[10px] p-0 focus:ring-0 w-16"
+                                                                                    />
+                                                                                    <button onClick={() => {
+                                                                                        const newTypes = [...generatedContent.variants!.variantTypes!];
+                                                                                        const newValues = type.values.filter((_, idx) => idx !== valIdx);
+                                                                                        newTypes[typeIdx] = { ...type, values: newValues };
+                                                                                        updateContent({ variants: { ...generatedContent.variants!, variantTypes: newTypes } });
+                                                                                    }} className="text-red-300 hover:text-red-500"><X className="w-2.5 h-2.5"/></button>
+                                                                                </div>
+                                                                            ))}
+                                                                            <button 
+                                                                                onClick={() => {
+                                                                                    const newTypes = [...generatedContent.variants!.variantTypes!];
+                                                                                    const newValues = [...type.values, 'Nuovo'];
+                                                                                    newTypes[typeIdx] = { ...type, values: newValues };
+                                                                                    updateContent({ variants: { ...generatedContent.variants!, variantTypes: newTypes } });
+                                                                                }}
+                                                                                className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-md text-[10px] font-bold hover:bg-emerald-200 transition-colors"
+                                                                            >
+                                                                                +
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="space-y-3">
+                                                        <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Offerte / Upsell (Opzioni)</label>
                                                         {generatedContent.variants.options.map((option, i) => (
                                                             <div key={i} className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
                                                                 <div className="flex justify-between items-center">
-                                                                    <span className="text-[9px] font-black text-slate-400">VARIANTE #{i+1}</span>
+                                                                    <span className="text-[9px] font-black text-slate-400 uppercase">Offerta #{i+1}</span>
                                                                     <button onClick={() => {
                                                                         const newOptions = generatedContent.variants!.options.filter((_, idx) => idx !== i);
                                                                         updateContent({ variants: { ...generatedContent.variants!, options: newOptions } });
                                                                     }} className="text-red-500"><Trash2 className="w-3.5 h-3.5"/></button>
                                                                 </div>
-                                                                <div className="grid grid-cols-2 gap-2">
-                                                                    <div>
-                                                                        <label className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Nome</label>
+                                                                <div className="grid grid-cols-12 gap-2">
+                                                                    <div className="col-span-6">
+                                                                        <label className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Nome Offerta</label>
                                                                         <input 
                                                                             type="text" 
                                                                             value={option.label || ''} 
@@ -2364,11 +2565,11 @@ export const App: React.FC = () => {
                                                                                 updateContent({ variants: { ...generatedContent.variants!, options: newOptions } });
                                                                             }} 
                                                                             className="w-full border border-slate-200 rounded-lg p-1.5 text-[10px]" 
-                                                                            placeholder="Esempio: Rosso / Taglia L"
+                                                                            placeholder="es: 1 Maglietta"
                                                                         />
                                                                     </div>
-                                                                    <div>
-                                                                        <label className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Prezzo (Opzionale)</label>
+                                                                    <div className="col-span-3">
+                                                                        <label className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Prezzo</label>
                                                                         <input 
                                                                             type="text" 
                                                                             value={option.price || ''} 
@@ -2378,7 +2579,21 @@ export const App: React.FC = () => {
                                                                                 updateContent({ variants: { ...generatedContent.variants!, options: newOptions } });
                                                                             }} 
                                                                             className="w-full border border-slate-200 rounded-lg p-1.5 text-[10px]" 
-                                                                            placeholder="Esempio: 59.00"
+                                                                            placeholder="15.00"
+                                                                        />
+                                                                    </div>
+                                                                    <div className="col-span-3">
+                                                                        <label className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Quantità</label>
+                                                                        <input 
+                                                                            type="number" 
+                                                                            value={option.quantity || 1} 
+                                                                            min={1}
+                                                                            onChange={e => {
+                                                                                const newOptions = [...generatedContent.variants!.options];
+                                                                                newOptions[i] = { ...option, quantity: parseInt(e.target.value) || 1 };
+                                                                                updateContent({ variants: { ...generatedContent.variants!, options: newOptions } });
+                                                                            }} 
+                                                                            className="w-full border border-slate-200 rounded-lg p-1.5 text-[10px]" 
                                                                         />
                                                                     </div>
                                                                 </div>
@@ -2412,9 +2627,9 @@ export const App: React.FC = () => {
                                                             </div>
                                                         ))}
                                                         <button onClick={() => {
-                                                            const newOptions = [...(generatedContent.variants?.options || []), { id: Math.random().toString(36).substr(2, 9), label: 'Nuova Variante' }];
+                                                            const newOptions = [...(generatedContent.variants?.options || []), { id: Math.random().toString(36).substr(2, 9), label: 'Nuova Offerta', quantity: 1 }];
                                                             updateContent({ variants: { ...generatedContent.variants!, options: newOptions } });
-                                                        }} className="w-full py-2 border border-dashed border-slate-300 rounded-lg text-slate-400 text-[10px] font-bold hover:bg-slate-50 flex items-center justify-center gap-1 transition-all"><Plus className="w-3 h-3"/> Aggiungi Variante</button>
+                                                        }} className="w-full py-2 border border-dashed border-slate-300 rounded-lg text-slate-400 text-[10px] font-bold hover:bg-slate-50 flex items-center justify-center gap-1 transition-all"><Plus className="w-3 h-3"/> Aggiungi Offerta</button>
                                                     </div>
                                                 </div>
                                             )}
@@ -2504,6 +2719,26 @@ export const App: React.FC = () => {
                                                             {g.label}
                                                         </button>
                                                     ))}
+                                                </div>
+                                            </div>
+
+                                            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Opzioni Checkout</label>
+                                                <div className="space-y-3">
+                                                    <label className="flex items-center justify-between cursor-pointer">
+                                                        <span className="text-xs font-bold text-slate-700">Mostra Assistente Live</span>
+                                                        <div className={`w-10 h-6 rounded-full p-1 transition-colors ${generatedContent.showLiveAssistant !== false ? 'bg-emerald-500' : 'bg-slate-300'}`}>
+                                                            <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${generatedContent.showLiveAssistant !== false ? 'translate-x-4' : 'translate-x-0'}`}></div>
+                                                        </div>
+                                                        <input type="checkbox" className="hidden" checked={generatedContent.showLiveAssistant !== false} onChange={(e) => updateContent({ showLiveAssistant: e.target.checked })} />
+                                                    </label>
+                                                    <label className="flex items-center justify-between cursor-pointer">
+                                                        <span className="text-xs font-bold text-slate-700">Mostra Pagamento con Carta</span>
+                                                        <div className={`w-10 h-6 rounded-full p-1 transition-colors ${generatedContent.showCardPayment !== false ? 'bg-emerald-500' : 'bg-slate-300'}`}>
+                                                            <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${generatedContent.showCardPayment !== false ? 'translate-x-4' : 'translate-x-0'}`}></div>
+                                                        </div>
+                                                        <input type="checkbox" className="hidden" checked={generatedContent.showCardPayment !== false} onChange={(e) => updateContent({ showCardPayment: e.target.checked })} />
+                                                    </label>
                                                 </div>
                                             </div>
 
